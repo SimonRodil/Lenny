@@ -1,0 +1,14 @@
+{
+  "name": "lenny-discord-bot",
+  "version": "1.0.0",
+  "description": "A basic Discord bot built with Node.js",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.0.0"
+  }
+}
