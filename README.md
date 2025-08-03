@@ -1,29 +1,22 @@
+# Lenny
+<<<<<<< HEAD
+Discord bot for LS&amp;E
+=======
 
-# Lenny Discord Bot
+This is a simple Python script project.
 
-A basic Discord bot built with Node.js using discord.js v14.
+## Getting Started
 
-## Setup
-
-1. Install dependencies:
+1. Ensure you have Python installed.
+2. Run the script:
    ```sh
-   npm install
-   ```
-2. Create a `.env` file in the root directory and add your Discord bot token:
-   ```env
-   DISCORD_TOKEN=your-bot-token-here
-   ```
-3. Start the bot:
-   ```sh
-   npm start
+   python main.py
    ```
 
-## Features
-- Responds to `!ping` with `Pong!`
-
-## Requirements
-- Node.js 16.9.0 or higher
-- A Discord bot token
+## Project Structure
+- `main.py`: Entry point script.
+- `.github/copilot-instructions.md`: Copilot customization instructions.
 
 ## License
-MIT
+Specify your license here.
+>>>>>>> e20084a (Initial Python Hello World project)
