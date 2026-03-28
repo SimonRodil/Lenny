@@ -34,8 +34,8 @@ module.exports = {
 
   // IDs de canales importantes
   channels: {
-    logs:     '',
-    welcome:  '',
-    general:  '',
+    welcome: '913891814233227294', // ID del canal de welcome
+    logs:     '1487382936301863044', // ID del canal de los logs para lenny.
+    general:  '1487383073199751260',
   },
 };
