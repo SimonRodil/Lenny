@@ -63,7 +63,7 @@ const AUTOMOD_CONFIG = {
   ],
 
   // Roles exentos del automod (IDs)
-  exemptRoles: [], // añade IDs de roles de admin/mod
+  exemptRoles: [require('../../../config').roles.team], // añade IDs de roles de admin/mod
 };
 
 
