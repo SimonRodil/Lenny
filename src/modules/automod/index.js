@@ -1,7 +1,6 @@
 // src/modules/automod/index.js
-
 const { logMessageDelete } = require('../logger');
-
+const config = require('../../../config');
 
 // ── Configuración del automod ──────────────────────
 const AUTOMOD_CONFIG = {
@@ -44,7 +43,7 @@ const AUTOMOD_CONFIG = {
   crossChannelSpam: {
     maxChannels:  3,      // cuántos canales distintos antes de actuar
     timeWindow:   10000,  // milisegundos (10 segundos)
-    banOnDetect:  true,   // true = ban automático, false = solo borrar + alertar mods
+    timeoutOnDetect: true, // true = timeout 28 días, false = solo borrar + alertar
   },
 
   // Anti-links: bloquear URLs externas
@@ -63,7 +62,7 @@ const AUTOMOD_CONFIG = {
   ],
 
   // Roles exentos del automod (IDs)
-  exemptRoles: [require('../../../config').roles.team], // añade IDs de roles de admin/mod
+  exemptRoles: [config.roles.team], // añade IDs de roles de admin/mod
 };
 
 
@@ -198,7 +197,7 @@ async function punish(message, reason) {
 // Detecta si el mismo usuario envió el mismo texto en N canales distintos
 // dentro de la ventana de tiempo configurada.
 async function checkCrossChannelSpam(message) {
-  const { maxChannels, timeWindow, banOnDetect } = AUTOMOD_CONFIG.crossChannelSpam;
+  const { maxChannels, timeWindow, timeoutOnDetect } = AUTOMOD_CONFIG.crossChannelSpam;
   const userId  = message.author.id;
   const content = message.content.trim().toLowerCase();
   const now     = Date.now();
@@ -232,15 +231,19 @@ async function checkCrossChannelSpam(message) {
     if (target) await target.delete().catch(() => {});
   }
 
-  if (banOnDetect) {
-    // Ban automático
-    await message.guild.members.ban(userId, {
-      reason: `[AUTOMOD] Cross-channel spam: mismo mensaje en ${uniqueChannels.size} canales`,
-    }).catch(err => console.error('[AUTOMOD] Error al banear:', err.message));
+  if (timeoutOnDetect) {
+    const member = message.guild.members.cache.get(userId)
+      || await message.guild.members.fetch(userId).catch(() => null);
+
+    if (member) {
+      await member.timeout(
+        28 * 24 * 60 * 60 * 1000,
+        `[AUTOMOD] Cross-channel spam: mismo mensaje en ${uniqueChannels.size} canales`
+      ).catch(err => console.error('[AUTOMOD] Error al aplicar timeout:', err.message));
+    }
   }
 
   // Alerta al canal de logs con mención al equipo de mods
-  const config = require('../../../config');
   await logMessageDelete({
     ...message,
     content: `[AUTOMOD: cross-channel spam en ${uniqueChannels.size} canales] ${message.content}`,
