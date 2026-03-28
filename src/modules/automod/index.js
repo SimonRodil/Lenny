@@ -1,52 +1,65 @@
 const { logMessageDelete } = require('../logger');
 
+
 // ── Configuración del automod ──────────────────────
 const AUTOMOD_CONFIG = {
   // Palabras prohibidas (en minúsculas)
   bannedWords: [
-  // ── Slurs raciales ────────────────────────────────
-  'nigger', 'nigga', 'n1gger', 'n1gga', 'ni**er',
-  'spic', 'sp1c', 'chink', 'ch1nk', 'gook',
-  'wetback', 'beaner', 'kike', 'k1ke', 'zipperhead',
-  'towelhead', 'sandnigger', 'coon', 'jigaboo', 'porch monkey',
+    // ── Slurs raciales ──────────────────────────────
+    'nigger', 'nigga', 'n1gger', 'n1gga', 'ni**er',
+    'spic', 'sp1c', 'chink', 'ch1nk', 'gook',
+    'wetback', 'beaner', 'kike', 'k1ke', 'zipperhead',
+    'towelhead', 'sandnigger', 'coon', 'jigaboo', 'porch monkey',
 
-  // ── Homofobia / transfobia ─────────────────────────
-  'faggot', 'f4ggot', 'fag', 'dyke', 'tranny',
-  'shemale', 'ladyboy', 'queer', // ← ojo, algunos comunidades lo reivindican
+    // ── Homofobia / transfobia ──────────────────────
+    'faggot', 'f4ggot', 'fag', 'dyke', 'tranny',
+    'shemale', 'ladyboy', 'queer', // ← ojo, algunas comunidades lo reivindican
 
-  // ── Insultos generales severos ─────────────────────
-  'retard', 'ret4rd', 'retarded',
+    // ── Insultos generales severos ──────────────────
+    'retard', 'ret4rd', 'retarded',
 
-  // ── Amenazas / violencia ───────────────────────────
-  'kys', 'kill yourself', 'go kill yourself',
-  'i will kill you', 'i will find you',
+    // ── Amenazas / violencia ────────────────────────
+    'kys', 'kill yourself', 'go kill yourself',
+    'i will kill you', 'i will find you',
 
-  // ── Contenido sexual explícito ─────────────────────
-  'childporn', 'child porn', 'pedophile',
-  'lolicon', 'shotacon',
+    // ── Contenido sexual explícito ──────────────────
+    'childporn', 'child porn', 'pedophile',
+    'lolicon', 'shotacon',
 
-  // ── Spam / scam ────────────────────────────────────
-  'discord.gg/', 'discord.com/invite',
-  'free nitro', 'claim your nitro',
-  'bit.ly', 'tinyurl', // links acortados sospechosos
-],  // añade las tuyas
+    // ── Spam / scam ─────────────────────────────────
+    'discord.gg/', 'discord.com/invite',
+    'free nitro', 'claim your nitro',
+    'bit.ly', 'tinyurl', // links acortados sospechosos
+  ], // añade las tuyas
 
   // Anti-spam: máx mensajes por ventana de tiempo
   spam: {
-    maxMessages: 5,   // mensajes
+    maxMessages: 5,    // mensajes
     timeWindow:  5000, // milisegundos (5 segundos)
   },
 
   // Anti-links: bloquear URLs externas
-  blockLinks: false,  // cámbialo a true para activar
+  // Cambia a true para activar. Los dominios de allowedDomains siempre pasan.
+  blockLinks: true,
+
+  // Dominios permitidos aunque blockLinks esté activo (whitelist)
+  // Añade aquí cualquier dominio que quieras que no sea bloqueado.
+  allowedDomains: [
+    'youtube.com', 'youtu.be',
+    'twitch.tv',
+    'twitter.com', 'x.com',
+    'imgur.com',
+    'tenor.com', 'giphy.com', // gifs
+    'spotify.com',
+  ],
 
   // Roles exentos del automod (IDs)
   exemptRoles: [], // añade IDs de roles de admin/mod
 };
 
+
 // ── Pre-compilar regex una sola vez al arrancar ───
 // (aquí va, justo DEBAJO de AUTOMOD_CONFIG)
-
 const BANNED_REGEX = AUTOMOD_CONFIG.bannedWords.map(word => ({
   word,
   regex: new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'),
@@ -54,6 +67,7 @@ const BANNED_REGEX = AUTOMOD_CONFIG.bannedWords.map(word => ({
 
 // Mapa en memoria para tracking de spam: userId → [timestamps]
 const spamTracker = new Map();
+
 
 /**
  * Punto de entrada del automod.
@@ -77,6 +91,7 @@ async function checkMessage(message) {
   return false;
 }
 
+
 // ── Palabras prohibidas ────────────────────────────
 async function checkBannedWords(message) {
   const content = message.content.toLowerCase();
@@ -88,6 +103,7 @@ async function checkBannedWords(message) {
   await punish(message, `contiene una palabra prohibida`);
   return true;
 }
+
 
 // ── Anti-spam ──────────────────────────────────────
 async function checkSpam(message) {
@@ -113,14 +129,32 @@ async function checkSpam(message) {
   return false;
 }
 
-// ── Anti-links ─────────────────────────────────────
-async function checkLinks(message) {
-  const urlRegex = /(https?:\/\/|www\.)\S+/gi;
-  if (!urlRegex.test(message.content)) return false;
 
-  await punish(message, 'contiene un enlace no permitido');
-  return true;
+// ── Anti-links ─────────────────────────────────────
+// Bloquea URLs externas salvo las que estén en allowedDomains.
+// Para desactivar completamente: blockLinks: false en AUTOMOD_CONFIG.
+// Para añadir un dominio permitido: agrégalo a allowedDomains arriba.
+async function checkLinks(message) {
+  const urlRegex = /(https?:\/\/|www\.)([^\s/]+)/gi;
+  let match;
+
+  while ((match = urlRegex.exec(message.content)) !== null) {
+    const domain = match[2].replace(/^www\./, '').toLowerCase();
+
+    // Verifica si el dominio (o un subdominio) está en la whitelist
+    const isAllowed = AUTOMOD_CONFIG.allowedDomains.some(
+      d => domain === d || domain.endsWith('.' + d)
+    );
+
+    if (!isAllowed) {
+      await punish(message, 'contiene un enlace no permitido');
+      return true;
+    }
+  }
+
+  return false;
 }
+
 
 // ── Acción: borrar + avisar + loggear ─────────────
 async function punish(message, reason) {
@@ -128,7 +162,7 @@ async function punish(message, reason) {
     // Borra el mensaje
     await message.delete();
 
-    // Avisa al usuario con un mensaje efímero en el canal
+    // Avisa al usuario con un mensaje en el canal
     const warning = await message.channel.send(
       `⚠️ ${message.author}, tu mensaje fue eliminado porque ${reason}.`
     );
@@ -146,5 +180,6 @@ async function punish(message, reason) {
     console.error('[AUTOMOD] Error al castigar:', err.message);
   }
 }
+
 
 module.exports = { checkMessage };
