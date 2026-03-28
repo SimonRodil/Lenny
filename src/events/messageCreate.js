@@ -1,3 +1,4 @@
+// src/events/messageCreate.js
 const { checkMessage } = require('../modules/automod');
 
 module.exports = {

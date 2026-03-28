@@ -32,8 +32,10 @@ module.exports = {
 
   // IDs de roles importantes (rellena con los de tu servidor)
   roles: {
-    admin:    '',
-    mod:      '',
+    admin:    '765240859204911135',
+    modSenior:'715891774010425396',
+    mod:      '839015347066765323',
+    team:     '759325778391072768',
     verified: '',
   },
 

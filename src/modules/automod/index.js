@@ -239,11 +239,17 @@ async function checkCrossChannelSpam(message) {
     }).catch(err => console.error('[AUTOMOD] Error al banear:', err.message));
   }
 
-  // Alerta al canal de logs
+  // Alerta al canal de logs con mención al equipo de mods
+  const config = require('../../../config');
   await logMessageDelete({
     ...message,
     content: `[AUTOMOD: cross-channel spam en ${uniqueChannels.size} canales] ${message.content}`,
   });
+
+  const logChannel = message.guild.channels.cache.get(config.channels.logs);
+  if (logChannel) {
+    await logChannel.send(`<@&${config.roles.team}> 🚨 Cross-channel spam detectado de ${message.author} en ${uniqueChannels.size} canales.`);
+  }
 
   return true;
 }
