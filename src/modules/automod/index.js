@@ -231,6 +231,7 @@ async function checkCrossChannelSpam(message) {
     if (target) await target.delete().catch(() => {});
   }
 
+  // Le da un timeout al usuario por hacer spam
   if (timeoutOnDetect) {
     const member = message.guild.members.cache.get(userId)
       || await message.guild.members.fetch(userId).catch(() => null);
