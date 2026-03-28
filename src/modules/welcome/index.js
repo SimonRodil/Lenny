@@ -1,18 +1,16 @@
+// src/modules/welcome.js
 const { infoEmbed } = require('../../../utils/embed');
 const config = require('../../../config');
 
-/**
- * Envía un mensaje de bienvenida al canal configurado.
- * @param {GuildMember} member
- */
 async function handleWelcome(member) {
+  if (!config.features.welcome) return; // ← si está desactivado, no hace nada
+
   const { guild } = member;
 
-  // Busca el canal de bienvenida desde config
   const channel = guild.channels.cache.get(config.channels.welcome)
-    ?? guild.systemChannel; // fallback al canal del sistema
+    ?? guild.systemChannel;
 
-  if (!channel) return; // Si no hay canal configurado, no hace nada
+  if (!channel) return;
 
   const embed = infoEmbed(
     `¡Bienvenido/a, ${member.user.username}! 👋`,

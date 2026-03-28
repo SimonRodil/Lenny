@@ -1,3 +1,5 @@
+// src/modules/automod/index.js
+
 const { logMessageDelete } = require('../logger');
 
 
@@ -38,6 +40,13 @@ const AUTOMOD_CONFIG = {
     timeWindow:  5000, // milisegundos (5 segundos)
   },
 
+  // Anti cross-channel spam: mismo mensaje en varios canales
+  crossChannelSpam: {
+    maxChannels:  3,      // cuántos canales distintos antes de actuar
+    timeWindow:   10000,  // milisegundos (10 segundos)
+    banOnDetect:  true,   // true = ban automático, false = solo borrar + alertar mods
+  },
+
   // Anti-links: bloquear URLs externas
   // Cambia a true para activar. Los dominios de allowedDomains siempre pasan.
   blockLinks: true,
@@ -68,6 +77,9 @@ const BANNED_REGEX = AUTOMOD_CONFIG.bannedWords.map(word => ({
 // Mapa en memoria para tracking de spam: userId → [timestamps]
 const spamTracker = new Map();
 
+// Mapa para tracking de spam cross-canales: userId → [{ channelId, content, timestamp }]
+const crossChannelTracker = new Map();
+
 
 /**
  * Punto de entrada del automod.
@@ -85,6 +97,7 @@ async function checkMessage(message) {
 
   // Corre todas las comprobaciones
   if (await checkBannedWords(message)) return true;
+  if (await checkCrossChannelSpam(message)) return true;
   if (await checkSpam(message)) return true;
   if (AUTOMOD_CONFIG.blockLinks && await checkLinks(message)) return true;
 
@@ -181,5 +194,58 @@ async function punish(message, reason) {
   }
 }
 
+// ── Anti cross-channel spam ────────────────────────
+// Detecta si el mismo usuario envió el mismo texto en N canales distintos
+// dentro de la ventana de tiempo configurada.
+async function checkCrossChannelSpam(message) {
+  const { maxChannels, timeWindow, banOnDetect } = AUTOMOD_CONFIG.crossChannelSpam;
+  const userId  = message.author.id;
+  const content = message.content.trim().toLowerCase();
+  const now     = Date.now();
+
+  if (!crossChannelTracker.has(userId)) crossChannelTracker.set(userId, []);
+  const history = crossChannelTracker.get(userId);
+
+  // Limpia entradas antiguas
+  const recent = history.filter(e => now - e.timestamp < timeWindow);
+
+  // Añade entrada actual
+  recent.push({ channelId: message.channel.id, content, timestamp: now });
+  crossChannelTracker.set(userId, recent);
+
+  // Filtra solo las entradas con el mismo contenido
+  const sameContent = recent.filter(e => e.content === content);
+  const uniqueChannels = new Set(sameContent.map(e => e.channelId));
+
+  if (uniqueChannels.size < maxChannels) return false;
+
+  // ── Acción ──────────────────────────────────────
+  crossChannelTracker.delete(userId); // resetea
+
+  // Borra todos los mensajes detectados (el actual + los anteriores si aún existen)
+  for (const entry of sameContent) {
+    const ch = message.guild.channels.cache.get(entry.channelId);
+    if (!ch) continue;
+    const msgs = await ch.messages.fetch({ limit: 20 }).catch(() => null);
+    if (!msgs) continue;
+    const target = msgs.find(m => m.author.id === userId && m.content.trim().toLowerCase() === content);
+    if (target) await target.delete().catch(() => {});
+  }
+
+  if (banOnDetect) {
+    // Ban automático
+    await message.guild.members.ban(userId, {
+      reason: `[AUTOMOD] Cross-channel spam: mismo mensaje en ${uniqueChannels.size} canales`,
+    }).catch(err => console.error('[AUTOMOD] Error al banear:', err.message));
+  }
+
+  // Alerta al canal de logs
+  await logMessageDelete({
+    ...message,
+    content: `[AUTOMOD: cross-channel spam en ${uniqueChannels.size} canales] ${message.content}`,
+  });
+
+  return true;
+}
 
 module.exports = { checkMessage };

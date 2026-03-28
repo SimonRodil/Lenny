@@ -25,6 +25,11 @@ module.exports = {
   // Cooldown por defecto en segundos para comandos
   defaultCooldown: 3,
 
+  // Módulos activos/inactivos
+  features: {
+    welcome: false, // ← ponlo en true para reactivar
+  },
+
   // IDs de roles importantes (rellena con los de tu servidor)
   roles: {
     admin:    '',
@@ -37,7 +42,7 @@ module.exports = {
     logs:         '1487454937729470484',  // canal general (puedes dejarlo o quitarlo)
     welcome:      '1116534850191638538',  // bienvenida (la desactivamos, pero dejamos la key)
     logsSuspect:  '1487449646887342263',  // 🆕 alertas de cuentas sospechosas
-    logsSpam:     '1487449697294618845',  // 🆕 alertas de spam
+    logsSpam:     '1487461453215830086',  // 🆕 alertas de spam
     logsLinks:    '1487449697294618845',  // 🆕 alertas de links
     general:  '1154067768627441807',
   },
