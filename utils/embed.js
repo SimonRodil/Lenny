@@ -1,5 +1,6 @@
 // utils/embed.js
 const { EmbedBuilder } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const config = require('../config');
 
 /**

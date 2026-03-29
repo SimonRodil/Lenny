@@ -134,6 +134,54 @@ async function checkSpam(message) {
   spamTracker.set(userId, recent);
 
   if (recent.length >= maxMessages) {
+
+    // ── Timeout específico para spam ──
+    try {
+      if (message.member) {
+        await message.member.timeout(
+          10 * 60 * 1000,
+          '[AutoMod] Spam detectado'
+        );
+      }
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`spam_ban_${message.author.id}`)
+          .setLabel('Banear')
+          .setEmoji('🔨')
+          .setStyle(ButtonStyle.Danger),   // rojo
+
+        new ButtonBuilder()
+          .setCustomId(`spam_redeem_${message.author.id}`)
+          .setLabel('Redimir')
+          .setEmoji('🕊️')
+          .setStyle(ButtonStyle.Success),  // verde
+      );
+
+      // Notifica a los mods
+      const modChannel = message.guild.channels.cache.get(config.channels.logsSpam);
+      if (modChannel) {
+        await modChannel.send({
+          content: `<@&${config.roles.team}>`,
+          embeds: [{
+            color: config.colors.error,
+            title: '⏱️ Timeout por spam — AutoMod',
+            fields: [
+              { name: 'Usuario',  value: `${message.author.tag} (<@${message.author.id}>)`, inline: true },
+              { name: 'Canal',    value: `<#${message.channelId}>`,                          inline: true },
+              { name: 'Duración', value: '10 minutos',                                       inline: true },
+            ],
+            timestamp: new Date().toISOString(),
+            footer: { text: `ID: ${message.author.id}` },
+          }],
+          components: [row],
+        });
+      }
+    } catch (err) {
+      console.error('[AutoMod] Error al aplicar timeout por spam:', err.message);
+    }
+    // ─────────────────────────────────
+
     spamTracker.delete(userId); // resetea el contador
     await punish(message, 'está enviando mensajes demasiado rápido (spam)');
     return true;
