@@ -33,6 +33,8 @@ async function logMemberJoin(member) {
       { name: 'Cuenta creada', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true }
     );
 
+  
+  if (!config.features.logJoin) return; // ← si está desactivado, no hace nada
   await channel.send({ embeds: [embed] });
 }
 
@@ -49,6 +51,8 @@ async function logMemberLeave(member) {
       { name: 'Estuvo', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: true }
     );
 
+
+  if (!config.features.logLeaves) return; // ← si está desactivado, no hace nada
   await channel.send({ embeds: [embed] });
 }
 
