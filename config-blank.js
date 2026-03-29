@@ -22,9 +22,6 @@ module.exports = {
     info:    'ℹ️',
   },
 
-  // Cooldown por defecto en segundos para comandos
-  defaultCooldown: 3,
-
   // Módulos activos/inactivos
   features: {
     welcome: false, // ← ponlo en true para reactivar
