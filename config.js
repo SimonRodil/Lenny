@@ -29,20 +29,20 @@ module.exports = {
 
   // IDs de roles importantes (rellena con los de tu servidor)
   roles: {
-    admin:    '765240859204911135',
-    modSenior:'715891774010425396',
-    mod:      '839015347066765323',
-    team:     '759325778391072768',
+    admin:    '',
+    modSenior:'',
+    mod:      '',
+    team:     '',
     verified: '',
   },
 
   // IDs de canales importantes
   channels: {
-    logs:         '1487454937729470484',  // canal general (puedes dejarlo o quitarlo)
-    welcome:      '1116534850191638538',  // bienvenida (la desactivamos, pero dejamos la key)
-    logsSuspect:  '1487449646887342263',  // 🆕 alertas de cuentas sospechosas
-    logsSpam:     '1487461453215830086',  // 🆕 alertas de spam
-    logsLinks:    '1487449697294618845',  // 🆕 alertas de links
-    general:  '1154067768627441807',
+    logs:         '1487382936301863044',  // canal general (puedes dejarlo o quitarlo)
+    welcome:      '1487382936301863044',  // bienvenida (la desactivamos, pero dejamos la key)
+    logsSuspect:  '1487382936301863044',  // 🆕 alertas de cuentas sospechosas
+    logsSpam:     '1487382936301863044',  // 🆕 alertas de spam
+    logsLinks:    '1487382936301863044',  // 🆕 alertas de links
+    general:      '1487382936301863044',
   },
 };
