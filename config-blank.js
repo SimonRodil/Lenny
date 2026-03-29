@@ -25,6 +25,8 @@ module.exports = {
   // Módulos activos/inactivos
   features: {
     welcome: false, // ← ponlo en true para reactivar
+    logJoin: false, // ← ponlo en true para reactivar
+    logLeaves: false, // ← ponlo en true para reactivar
   },
 
   // IDs de roles importantes (rellena con los de tu servidor)
