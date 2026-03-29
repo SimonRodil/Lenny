@@ -43,6 +43,7 @@ module.exports = {
     logs:         '',  // canal general (puedes dejarlo o quitarlo)
     welcome:      '',  // bienvenida (la desactivamos, pero dejamos la key)
     logsSuspect:  '',  // alertas de cuentas sospechosas
+    logsSusMes:   '1487382936301863044',  // alertas de mensajes sospechosos
     logsSpam:     '',  // alertas de spam
     logsLinks:    '',  // alertas de links
     general:      '',  // alertas generales
