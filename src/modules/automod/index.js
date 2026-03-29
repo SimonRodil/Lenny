@@ -37,8 +37,8 @@ const AUTOMOD_CONFIG = {
 
   // Anti-spam: máx mensajes por ventana de tiempo
   spam: {
-    maxMessages: 5,    // mensajes
-    timeWindow:  10000, // milisegundos (10 segundos)
+    maxMessages: 3,    // mensajes
+    timeWindow:  15000, // milisegundos (10 segundos)
   },
 
   // Anti cross-channel spam: mismo mensaje en varios canales
