@@ -38,13 +38,13 @@ const AUTOMOD_CONFIG = {
   // Anti-spam: máx mensajes por ventana de tiempo
   spam: {
     maxMessages: 3,    // mensajes
-    timeWindow:  15000, // milisegundos (10 segundos)
+    timeWindow:  120000, // milisegundos (60 segundos)
   },
 
   // Anti cross-channel spam: mismo mensaje en varios canales
   crossChannelSpam: {
     maxChannels:  3,      // cuántos canales distintos antes de actuar
-    timeWindow:   10000,  // milisegundos (10 segundos)
+    timeWindow:   120000,  // milisegundos (120 segundos)
     timeoutOnDetect: true, // true = timeout 28 días, false = solo borrar + alertar
   },
 
