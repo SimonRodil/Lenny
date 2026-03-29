@@ -123,15 +123,15 @@ suspiciousWords: {
 
   // Anti-spam: máx mensajes por ventana de tiempo
   spam: {
-    maxMessages: 4,    // mensajes
-    timeWindow:  120000, // milisegundos (60 segundos)
+    maxRepeats: 3,    // mensajes
+    timeWindow:  60000, // milisegundos (60 segundos)
   },
 
   // Anti cross-channel spam: mismo mensaje en varios canales
   crossChannelSpam: {
-    maxChannels:  4,      // cuántos canales distintos antes de actuar
+    maxChannels:  3,      // cuántos canales distintos antes de actuar
     timeWindow:   120000,  // milisegundos (120 segundos)
-    timeoutOnDetect: true, // true = timeout 28 días, false = solo borrar + alertar
+    timeoutOnDetect: true, // true = timeout 2 días, false = solo borrar + alertar
   },
 
   // Anti-links: bloquear URLs externas
@@ -298,14 +298,25 @@ async function checkSuspiciousWords(message) {
 
 
 // ── Palabras prohibidas ────────────────────────────
+// Busca la primera palabra de la lista que aparezca en el mensaje.
+// Usa exec() en lugar de test() para capturar el fragmento exacto.
 async function checkBannedWords(message) {
   const content = message.content.toLowerCase();
 
-  // Lee BANNED_REGEX con bordes de palabra para cada término
-  const match = BANNED_REGEX.find(({ regex }) => regex.test(content));
-  if (!match) return false;
+  // Busca el primer match y guarda la palabra detectada
+  const matched = BANNED_REGEX.find(({ regex }) => regex.test(content));
+  if (!matched) return false;
 
-  await punish(message, `contiene una palabra prohibida`);
+  // Extrae el fragmento exacto que coincidió (max 100 chars de contexto)
+  const execResult  = matched.regex.exec(content);
+  const matchedText = execResult ? execResult[0] : matched.word;
+
+  // Pasa la palabra detectada al reason para mostrarlo en el embed
+  await punish(message, `contiene una palabra prohibida`, {
+    triggerModule: 'Palabras prohibidas',
+    matchedWord:   matched.word,
+    matchedText,
+  });
   return true;
 }
 
@@ -313,26 +324,30 @@ async function checkBannedWords(message) {
 // ── Anti-spam ──────────────────────────────────────
 async function checkSpam(message) {
   const userId = message.author.id;
+  const content = message.content.trim().toLowerCase();
   const now    = Date.now();
-  const { maxMessages, timeWindow } = AUTOMOD_CONFIG.spam;
+  const { maxRepeats, timeWindow } = AUTOMOD_CONFIG.spam;
 
-  // Obtiene o crea el historial del usuario
-  if (!spamTracker.has(userId)) spamTracker.set(userId, []);
-  const timestamps = spamTracker.get(userId);
+  // Estructura: userId → Map<contenido → [timestamps]>
+  if (!spamTracker.has(userId)) spamTracker.set(userId, new Map());
+  const userMap = spamTracker.get(userId);
 
-  // Filtra mensajes dentro de la ventana de tiempo
+  if (!userMap.has(content)) userMap.set(content, []);
+  const timestamps = userMap.get(content);
+
+  // Filtra solo los timestamps dentro de la ventana de tiempo
   const recent = timestamps.filter(t => now - t < timeWindow);
   recent.push(now);
-  spamTracker.set(userId, recent);
+  userMap.set(content, recent);
 
-  if (recent.length >= maxMessages) {
+  if (recent.length >= maxRepeats) {
+    userMap.delete(content); // resetea solo este mensaje
 
-    // ── Timeout específico para spam ──
     try {
       if (message.member) {
         await message.member.timeout(
           10 * 60 * 1000,
-          '[AutoMod] Spam detectado'
+          '[AutoMod] Spam de mensaje repetido'
         );
       }
 
@@ -341,41 +356,39 @@ async function checkSpam(message) {
           .setCustomId(`spam_ban_${message.author.id}`)
           .setLabel('Banear')
           .setEmoji('🔨')
-          .setStyle(ButtonStyle.Danger),   // rojo
-
+          .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
           .setCustomId(`spam_redeem_${message.author.id}`)
           .setLabel('Redimir')
           .setEmoji('🕊️')
-          .setStyle(ButtonStyle.Success),  // verde
+          .setStyle(ButtonStyle.Success),
       );
 
-      // Notifica a los mods
       const logsSpam = message.guild.channels.cache.get(config.channels.logsSpam);
       if (logsSpam) {
         await logsSpam.send({
           content: `<@&${config.roles.team}>`,
           embeds: [{
             color: config.colors.error,
-            title: '⏱️ Timeout por spam — AutoMod',
+            title: '⏱️ Timeout por spam repetido — AutoMod',
             fields: [
               { name: 'Usuario',  value: `${message.author.tag} (<@${message.author.id}>)`, inline: true },
               { name: 'Canal',    value: `<#${message.channelId}>`,                          inline: true },
-              { name: 'Duración', value: '1 mes',                                       inline: true },
+              { name: 'Duración', value: '10 minutos',                                       inline: true },
+              { name: 'Repeticiones', value: `${recent.length}x en 60 segundos`,               inline: true },
+              { name: 'Mensaje repetido', value: `\`\`\`${content.slice(0, 300)}\`\`\`` },
             ],
             timestamp: new Date().toISOString(),
             footer: { text: `ID: ${message.author.id}` },
           }],
           components: [row],
         });
-      } else { console.error ('No consiguió el canal de spam-messages-alert') }
+      }
     } catch (err) {
       console.error('[AutoMod] Error al aplicar timeout por spam:', err.message);
     }
-    // ─────────────────────────────────
 
-    spamTracker.delete(userId); // resetea el contador
-    await punish(message, 'está enviando mensajes demasiado rápido (spam)');
+    await punish(message, 'está enviando el mismo mensaje repetidamente (spam)');
     return true;
   }
 
@@ -400,7 +413,12 @@ async function checkLinks(message) {
     );
 
     if (!isAllowed) {
-      await punish(message, 'contiene un enlace no permitido');
+      // Pasa el dominio bloqueado como contexto para el embed
+      await punish(message, 'contiene un enlace no permitido', {
+        triggerModule: 'Anti-links',
+        matchedWord:   domain,
+        matchedText:   match[0], // URL completa detectada
+      });
       return true;
     }
   }
@@ -410,31 +428,69 @@ async function checkLinks(message) {
 
 
 // ── Acción: borrar + avisar + loggear ─────────────
-async function punish(message, reason) {
+async function punish(message, reason, context = null)  {
 
   if (!message.guild || !message.channel) return; // mensaje parcial, ignorar
   
   try {
-    // Borra el mensaje
+    // 1. Borra el mensaje
     await message.delete();
 
-    // Avisa al usuario con un mensaje en el canal
+    // 2. Avisa al usuario (se autodestruye en 5s)
     const warning = await message.channel.send(
       `⚠️ ${message.author}, tu mensaje fue eliminado porque ${reason}.`
     );
-
-    // Borra el aviso después de 5 segundos
     setTimeout(() => warning.delete().catch(() => {}), 5000);
 
-    // Registra en logs
+    // 3. Construye el contenido del log con contexto si está disponible
+    let logContent = `[AUTOMOD: ${reason}] ${message.content}`;
+    if (context) {
+      logContent = `[AUTOMOD: ${context.triggerModule} | "${context.matchedWord}"] ${message.content}`;
+    }
+
+    // 4. Envía al log del logger
     await logMessageDelete({
       ...message,
-      content: `[AUTOMOD: ${reason}] ${message.content}`,
+      content: logContent,
     });
+
+    // 5. Si hay contexto, manda un embed extra al canal logsChannel con el detalle
+    if (context) {
+      const logsChannel = message.guild.channels.cache.get(config.channels.logs);
+      if (logsChannel) {
+        // Resalta la palabra en el mensaje citado con **negrita**
+        const cited = message.content.length > 800
+          ? message.content.slice(0, 800) + '…'
+          : message.content;
+
+        // Reemplaza la coincidencia con **negrita** para destacarla
+        const highlighted = cited.replace(
+          new RegExp(context.matchedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+          `**${context.matchedText}**`
+        );
+
+        await logsChannel.send({
+          embeds: [{
+            color: config.colors.error,
+            title: `🔍 AutoMod — ${context.triggerModule}`,
+            fields: [
+              { name: 'Usuario', value: `${message.author.tag} (<@${message.author.id}>)`, inline: true },
+              { name: 'Canal',   value: `<#${message.channelId}>`,                          inline: true },
+              { name: '📌 Regla disparada', value: `\`${context.triggerModule}\``,          inline: true },
+              { name: '🔍 Coincidencia',    value: `\`${context.matchedWord}\``,            inline: true },
+              { name: '💬 Fragmento (palabra resaltada)', value: highlighted.slice(0, 1024) },
+            ],
+            timestamp: new Date().toISOString(),
+            footer: { text: `ID: ${message.author.id}` },
+          }],
+        });
+      }
+    }
 
   } catch (err) {
     console.error('[AUTOMOD] Error al castigar:', err.message);
   }
+
 }
 
 // ── Anti cross-channel spam ────────────────────────
@@ -482,7 +538,7 @@ async function checkCrossChannelSpam(message) {
 
     if (member) {
       await member.timeout(
-        28 * 24 * 60 * 60 * 1000,
+        2 * 24 * 60 * 60 * 1000,  // 2 días
         `[AUTOMOD] Cross-channel spam: mismo mensaje en ${uniqueChannels.size} canales`
       ).catch(err => console.error('[AUTOMOD] Error al aplicar timeout:', err.message));
     }
@@ -515,11 +571,11 @@ async function checkCrossChannelSpam(message) {
       content: `<@&${config.roles.team}> 🚨 Cross-channel spam detectado de ${message.author} en ${uniqueChannels.size} canales.`,
       embeds: [{
         color: config.colors.error,
-        title: '⏱️ Timeout por spam — AutoMod',
+        title: '⏱️ Timeout por spam cross-channels — AutoMod',
         fields: [
           { name: 'Usuario',  value: `${message.author.tag} (<@${message.author.id}>)`, inline: true },
           { name: 'Canal',    value: `<#${message.channelId}>`,                          inline: true },
-          { name: 'Duración', value: '1 mes',                                       inline: true },
+          { name: 'Duración', value: '2 dias',                                       inline: true },
         ],
         timestamp: new Date().toISOString(),
         footer: { text: `ID: ${message.author.id}` },
