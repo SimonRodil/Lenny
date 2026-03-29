@@ -38,68 +38,88 @@ const AUTOMOD_CONFIG = {
 // 🆕 Palabras sospechosas: solo alerta silenciosa a mods, nunca borra el mensaje
 suspiciousWords: {
   words: [
-  // ── Ofertas laborales / trabajo remoto (ES) ────────────
-  'trabajo desde casa', 'gana dinero', 'ingresos extra',
-  'trabaja con nosotros', 'únete a nuestro equipo',
-  'gana dinero fácil', 'dinero rápido', 'ganar desde casa',
-  'oportunidad de negocio', 'negocio rentable',
-  'inversión garantizada', 'sin experiencia previa',
-  'flexibilidad horaria', 'solo necesitas un teléfono',
-  'trabaja a tu ritmo', 'horario flexible',
-  'gana desde tu celular', 'genera ingresos pasivos',
-  'emprendimiento desde casa', 'modelo de negocio probado',
-  'sin jefe', 'sé tu propio jefe', 'libertad financiera',
 
-  // ── Work from home / job offers (EN) ──────────────────
-  'work from home', 'make money online', 'earn extra income',
-  'join our team', 'work with us',
-  'easy money', 'fast money', 'earn from home',
-  'business opportunity', 'profitable business',
-  'guaranteed investment', 'no experience needed',
-  'flexible hours', 'all you need is a phone',
-  'work at your own pace', 'be your own boss',
-  'passive income', 'financial freedom',
-  'proven business model', 'work anywhere', 'job opportunity',
+    // ── Ofertas laborales / trabajo remoto (ES) ──────────
+    'trabajo desde casa', 'gana dinero', 'ingresos extra',
+    'trabaja con nosotros', 'únete a nuestro equipo',
+    'gana dinero fácil', 'dinero rápido', 'ganar desde casa',
+    'oportunidad de negocio', 'negocio rentable',
+    'inversión garantizada', 'sin experiencia previa',
+    'flexibilidad horaria', 'solo necesitas un teléfono',
+    'trabaja a tu ritmo', 'horario flexible',
+    'gana desde tu celular', 'genera ingresos pasivos',
+    'emprendimiento desde casa', 'modelo de negocio probado',
+    'sin jefe', 'sé tu propio jefe', 'libertad financiera',
+    'trabajo simple', 'trabajo sencillo desde casa',
+    'busco personas interesadas', 'mándame un mensaje privado',
+    'te explico por privado', 'escríbeme al privado',
+    'sin conocimientos previos', 'yo te enseño',
+    'ganar dinero en línea', 'trabajo en línea',
 
-  // ── Crypto / estafas financieras (ES) ─────────────────
-  'duplica tu dinero', 'inversión segura', 'retorno garantizado',
-  'crypto signals', 'señales crypto', 'pump group',
-  'multiplica tus ganancias', 'gana con cripto',
-  'trading automatizado', 'bot de trading',
-  'plataforma de inversión', 'rentabilidad garantizada',
-  'retiro en 24 horas', 'sin riesgo',
+    // ── Work from home / job offers (EN) ─────────────────
+    'work from home', 'make money online', 'earn extra income',
+    'join our team', 'work with us',
+    'easy money', 'fast money', 'earn from home',
+    'business opportunity', 'profitable business',
+    'guaranteed investment', 'no experience needed',
+    'flexible hours', 'all you need is a phone',
+    'work at your own pace', 'be your own boss',
+    'passive income', 'financial freedom',
+    'proven business model', 'work anywhere', 'job opportunity',
+    'simple job', 'simple online job',
+    'earn extra income online', 'earning extra income',
+    'done from home', 'work from home with',
+    'no special skills', 'no special skills required',
+    'send me a dm', 'send me a direct message',
+    'i will provide guidance', 'interested in earning',
+    'looking for someone', 'looking for people',
+    'looking for individuals', 'looking for anyone interested',
+    'message me for more', 'more details and earnings',
+    'contact me for details', 'inbox me',
+    'i am looking for', 'computer and internet',
+    'necessary guidance', 'provide the guidance',
 
-  // ── Crypto / financial scams (EN) ─────────────────────
-  'double your money', 'safe investment', 'guaranteed returns',
-  'crypto tips', 'pump and dump', 'trading signals',
-  'multiply your earnings', 'earn with crypto',
-  'automated trading', 'trading bot',
-  'investment platform', 'guaranteed profit',
-  'withdraw in 24 hours', 'zero risk', 'risk free',
-  '100% profit', 'daily returns',
+    // ── Crypto / estafas financieras (ES) ────────────────
+    'duplica tu dinero', 'inversión segura', 'retorno garantizado',
+    'crypto signals', 'señales crypto', 'pump group',
+    'multiplica tus ganancias', 'gana con cripto',
+    'trading automatizado', 'bot de trading',
+    'plataforma de inversión', 'rentabilidad garantizada',
+    'retiro en 24 horas', 'sin riesgo',
 
-  // ── Phishing / urgencia artificial (ES) ───────────────
-  'haz clic aquí', 'regístrate gratis', 'accede ahora',
-  'oferta limitada', 'solo hoy', 'actúa ya',
-  'últimas plazas', 'no pierdas esta oportunidad',
-  'tiempo limitado', 'enlace exclusivo',
-  'código de invitación', 'acceso exclusivo',
+    // ── Crypto / financial scams (EN) ────────────────────
+    'double your money', 'safe investment', 'guaranteed returns',
+    'crypto tips', 'pump and dump', 'trading signals',
+    'multiply your earnings', 'earn with crypto',
+    'automated trading', 'trading bot',
+    'investment platform', 'guaranteed profit',
+    'withdraw in 24 hours', 'zero risk', 'risk free',
+    '100% profit', 'daily returns',
 
-  // ── Phishing / urgency (EN) ───────────────────────────
-  'click here', 'sign up for free', 'access now',
-  'limited offer', 'today only', 'act now',
-  'limited spots', 'don\'t miss this opportunity',
-  'limited time', 'exclusive link',
-  'invitation code', 'exclusive access',
-  'dm me', 'message me for details', 'check my bio',
-  'link in bio', 'drop your email',
-],
-  thresholds: {
-    low:    1,  // 🟡 amarillo, sin ping
-    medium: 2,  // 🟠 naranja, sin ping
-    high:   3,  // 🔴 rojo, ping @team
-  },
-},
+    // ── Phishing / urgencia artificial (ES) ──────────────
+    'haz clic aquí', 'regístrate gratis', 'accede ahora',
+    'oferta limitada', 'solo hoy', 'actúa ya',
+    'últimas plazas', 'no pierdas esta oportunidad',
+    'tiempo limitado', 'enlace exclusivo',
+    'código de invitación', 'acceso exclusivo',
+
+    // ── Phishing / urgency (EN) ───────────────────────────
+    'click here', 'sign up for free', 'access now',
+    'limited offer', 'today only', 'act now',
+    'limited spots', "don't miss this opportunity",
+    'limited time', 'exclusive link',
+    'invitation code', 'exclusive access',
+    'dm me', 'message me for details', 'check my bio',
+    'link in bio', 'drop your email',
+
+  ], // ← cierra words array
+
+    thresholds: {   // ← FALTA ESTO — sin esto checkSuspiciousWords explota
+      low:    1,
+      medium: 2,
+      high:   3,
+    },
+  }, // ← cierra suspiciousWords
 
   // Anti-spam: máx mensajes por ventana de tiempo
   spam: {
