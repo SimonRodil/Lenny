@@ -6,6 +6,7 @@ const config = require('../../../config');
  * Retorna null si no está configurado.
  */
 function getLogChannel(guild) {
+  if (!guild) return null;  // ← añade esto
   return guild.channels.cache.get(config.channels.logs) ?? null;
 }
 
@@ -73,6 +74,8 @@ async function logMessageEdit(oldMessage, newMessage) {
 
 // ── Mensaje borrado ────────────────────────────────
 async function logMessageDelete(message) {
+  if (!message?.guild) return;  // ← añade esto al principio
+
   if (message.author?.bot) return;
 
   const channel = getLogChannel(message.guild);

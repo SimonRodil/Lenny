@@ -2,9 +2,10 @@ require('dotenv').config();
 const LennyClient       = require('./src/client');
 const { loadCommands }  = require('./src/handlers/commandHandler');
 const { loadEvents }    = require('./src/handlers/eventHandler');
-require('./src/handlers/banButtons')(client);
 
 const client = new LennyClient();
+
+require('./src/handlers/banButtons')(client);
 
 loadCommands(client);
 loadEvents(client);

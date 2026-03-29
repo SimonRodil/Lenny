@@ -1,6 +1,7 @@
 // src/modules/automod/index.js
 const { logMessageDelete } = require('../logger');
 const config = require('../../../config');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 // ── Configuración del automod ──────────────────────
 const AUTOMOD_CONFIG = {
@@ -159,9 +160,9 @@ async function checkSpam(message) {
       );
 
       // Notifica a los mods
-      const modChannel = message.guild.channels.cache.get(config.channels.logsSpam);
-      if (modChannel) {
-        await modChannel.send({
+      const logsSpam = message.guild.channels.cache.get(config.channels.logsSpam);
+      if (logsSpam) {
+        await logsSpam.send({
           content: `<@&${config.roles.team}>`,
           embeds: [{
             color: config.colors.error,
@@ -176,7 +177,7 @@ async function checkSpam(message) {
           }],
           components: [row],
         });
-      }
+      } else { console.error ('No consiguió el canal de spam-messages-alert') }
     } catch (err) {
       console.error('[AutoMod] Error al aplicar timeout por spam:', err.message);
     }
@@ -302,10 +303,44 @@ async function checkCrossChannelSpam(message) {
     content: `[AUTOMOD: cross-channel spam en ${uniqueChannels.size} canales] ${message.content}`,
   });
 
-  const logChannel = message.guild.channels.cache.get(config.channels.logs);
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`spam_ban_${message.author.id}`)
+      .setLabel('Banear')
+      .setEmoji('🔨')
+      .setStyle(ButtonStyle.Danger),   // rojo
+
+    new ButtonBuilder()
+      .setCustomId(`spam_redeem_${message.author.id}`)
+      .setLabel('Redimir')
+      .setEmoji('🕊️')
+      .setStyle(ButtonStyle.Success),  // verde
+  );
+
+  // Notifica a los mods
+  const logsSpam = message.guild.channels.cache.get(config.channels.logsSpam);
+  if (logsSpam) {
+    await logsSpam.send({
+      content: `<@&${config.roles.team}> 🚨 Cross-channel spam detectado de ${message.author} en ${uniqueChannels.size} canales.`,
+      embeds: [{
+        color: config.colors.error,
+        title: '⏱️ Timeout por spam — AutoMod',
+        fields: [
+          { name: 'Usuario',  value: `${message.author.tag} (<@${message.author.id}>)`, inline: true },
+          { name: 'Canal',    value: `<#${message.channelId}>`,                          inline: true },
+          { name: 'Duración', value: '10 minutos',                                       inline: true },
+        ],
+        timestamp: new Date().toISOString(),
+        footer: { text: `ID: ${message.author.id}` },
+      }],
+      components: [row],
+    });
+  } else { console.error ('No consiguió el canal de spam-messages-alert') }
+
+  /* const logChannel = message.guild.channels.cache.get(config.channels.logs);
   if (logChannel) {
     await logChannel.send(`<@&${config.roles.team}> 🚨 Cross-channel spam detectado de ${message.author} en ${uniqueChannels.size} canales.`);
-  }
+  } */
 
   return true;
 }
