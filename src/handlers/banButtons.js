@@ -4,7 +4,11 @@ const config = require('../../config');
 module.exports = (client) => {
   client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
-    if (!interaction.customId.startsWith('spam_ban_') && !interaction.customId.startsWith('spam_redeem_')) return;
+    if (
+    !interaction.customId.startsWith('spam_ban_') &&
+    !interaction.customId.startsWith('spam_redeem_') &&
+    !interaction.customId.startsWith('suspect_ban_')  // 🆕
+    ) return;
 
     const { customId, guild, member } = interaction;
 
@@ -19,8 +23,8 @@ module.exports = (client) => {
     }
 
     // ── Botón de baneo ──────────────────────────────
-    if (customId.startsWith('spam_ban_')) {
-      const userId = customId.replace('spam_ban_', '');
+    if (customId.startsWith('spam_ban_') || customId.startsWith('suspect_ban_')) {
+      const userId = customId.replace('spam_ban_', '').replace('suspect_ban_', '');
       try {
         await guild.members.ban(userId, {
           reason: `[AutoMod] Spam — baneado por ${member.user.tag}`,
