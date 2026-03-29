@@ -16,3 +16,4 @@ Dependency directories
 
 /pnpm-lock.yaml /package-lock.json
 .env (simon server)
+.DS_Store

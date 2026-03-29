@@ -11,6 +11,7 @@ const AUTOMOD_CONFIG = {
     'spic', 'sp1c', 'chink', 'ch1nk', 'gook',
     'wetback', 'beaner', 'kike', 'k1ke', 'zipperhead',
     'towelhead', 'sandnigger', 'coon', 'jigaboo', 'porch monkey',
+    'cacker',
 
     // ── Homofobia / transfobia ──────────────────────
     'faggot', 'f4ggot', 'fag', 'dyke', 'tranny',
@@ -170,6 +171,9 @@ async function checkLinks(message) {
 
 // ── Acción: borrar + avisar + loggear ─────────────
 async function punish(message, reason) {
+
+  if (!message.guild || !message.channel) return; // mensaje parcial, ignorar
+  
   try {
     // Borra el mensaje
     await message.delete();

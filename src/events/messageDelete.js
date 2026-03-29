@@ -1,3 +1,5 @@
+// src/events/messageDelete.js
+
 const { logMessageDelete } = require('../modules/logger');
 
 module.exports = {
