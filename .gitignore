@@ -20,4 +20,4 @@ Dependency directories
 **/.DS_Store
 .env (LS-E)
 
-config.js
+./config.js

@@ -12,7 +12,7 @@ const AUTOMOD_CONFIG = {
     'spic', 'sp1c', 'chink', 'ch1nk', 'gook',
     'wetback', 'beaner', 'kike', 'k1ke', 'zipperhead',
     'towelhead', 'sandnigger', 'coon', 'jigaboo', 'porch monkey',
-    'cacker',
+    'cracker',
 
     // ── Homofobia / transfobia ──────────────────────
     'faggot', 'f4ggot', 'fag', 'dyke', 'tranny',
