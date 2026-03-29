@@ -21,3 +21,4 @@ Dependency directories
 .env (LS-E)
 
 config.js
+src/commands/info/test.js
