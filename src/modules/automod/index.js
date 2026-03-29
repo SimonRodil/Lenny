@@ -221,8 +221,8 @@ async function checkSuspiciousWords(message) {
     pingTeam = false;
   }
 
-  const logsSpam = message.guild.channels.cache.get(config.channels.logsSpam);
-  if (!logsSpam) return;
+  const logsSusMes = message.guild.channels.cache.get(config.channels.logsSusMes);
+  if (!logsSusMes) return;
 
   // El mensaje citado (máx 800 chars para no saturar el embed)
   const cited = message.content.length > 800
@@ -244,7 +244,7 @@ async function checkSuspiciousWords(message) {
       );
     }
 
-  await logsSpam.send({
+  await logsSusMes.send({
     content: pingTeam ? `<@&${config.roles.team}>` : undefined,
     embeds: [{
       color,
