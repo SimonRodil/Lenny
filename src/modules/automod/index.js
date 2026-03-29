@@ -59,7 +59,7 @@ suspiciousWords: {
   'flexible hours', 'all you need is a phone',
   'work at your own pace', 'be your own boss',
   'passive income', 'financial freedom',
-  'proven business model', 'work anywhere',
+  'proven business model', 'work anywhere', 'job opportunity',
 
   // ── Crypto / estafas financieras (ES) ─────────────────
   'duplica tu dinero', 'inversión segura', 'retorno garantizado',
@@ -103,13 +103,13 @@ suspiciousWords: {
 
   // Anti-spam: máx mensajes por ventana de tiempo
   spam: {
-    maxMessages: 3,    // mensajes
+    maxMessages: 4,    // mensajes
     timeWindow:  120000, // milisegundos (60 segundos)
   },
 
   // Anti cross-channel spam: mismo mensaje en varios canales
   crossChannelSpam: {
-    maxChannels:  3,      // cuántos canales distintos antes de actuar
+    maxChannels:  4,      // cuántos canales distintos antes de actuar
     timeWindow:   120000,  // milisegundos (120 segundos)
     timeoutOnDetect: true, // true = timeout 28 días, false = solo borrar + alertar
   },
@@ -341,7 +341,7 @@ async function checkSpam(message) {
             fields: [
               { name: 'Usuario',  value: `${message.author.tag} (<@${message.author.id}>)`, inline: true },
               { name: 'Canal',    value: `<#${message.channelId}>`,                          inline: true },
-              { name: 'Duración', value: '10 minutos',                                       inline: true },
+              { name: 'Duración', value: '1 mes',                                       inline: true },
             ],
             timestamp: new Date().toISOString(),
             footer: { text: `ID: ${message.author.id}` },
@@ -499,7 +499,7 @@ async function checkCrossChannelSpam(message) {
         fields: [
           { name: 'Usuario',  value: `${message.author.tag} (<@${message.author.id}>)`, inline: true },
           { name: 'Canal',    value: `<#${message.channelId}>`,                          inline: true },
-          { name: 'Duración', value: '10 minutos',                                       inline: true },
+          { name: 'Duración', value: '1 mes',                                       inline: true },
         ],
         timestamp: new Date().toISOString(),
         footer: { text: `ID: ${message.author.id}` },
