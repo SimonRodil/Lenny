@@ -64,8 +64,8 @@ async function checkSuspiciousAccount(member) {
 
   if (total < ALERT_THRESHOLD) return; // no sospechoso
 
-  const logChannel = member.guild.channels.cache.get(config.channels.logs);
-  if (!logChannel) return;
+  const logsSuspectChannel = member.guild.channels.cache.get(config.channels.logsSuspect);
+  if (!logsSuspectChannel) return;
 
   const embed = new EmbedBuilder()
     .setColor(total >= 10 ? 0xED4245 : 0xFEE75C) // rojo si crítico, amarillo si sospechoso
@@ -80,7 +80,7 @@ async function checkSuspiciousAccount(member) {
     .setTimestamp()
     .setFooter({ text: 'Lenny • Suspicious Accounts' });
 
-  await logChannel.send({ embeds: [embed] });
+  await logsSuspectChannel.send({ embeds: [embed] });
 }
 
 module.exports = { checkSuspiciousAccount };
