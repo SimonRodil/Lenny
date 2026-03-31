@@ -141,12 +141,19 @@ suspiciousWords: {
   // Dominios permitidos aunque blockLinks esté activo (whitelist)
   // Añade aquí cualquier dominio que quieras que no sea bloqueado.
   allowedDomains: [
-    'youtube.com', 'youtu.be',
-    'twitch.tv',
-    'twitter.com', 'x.com',
-    'imgur.com',
-    'tenor.com', 'giphy.com', // gifs
-    'spotify.com',
+  // CDNs de Discord (imágenes, gifs, adjuntos)
+  'cdn.discordapp.com',
+  'media.discordapp.net',
+  'discordapp.net',
+  'discordapp.com',
+
+  // Plataformas de contenido
+  'youtube.com', 'youtu.be',
+  'twitch.tv',
+  'twitter.com', 'x.com',
+  'imgur.com',
+  'tenor.com', 'giphy.com',
+  'spotify.com',
   ],
 
   // Roles exentos del automod (IDs)
