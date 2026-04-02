@@ -189,9 +189,23 @@ const crossChannelTracker = new Map();
  * @returns {boolean} true si el mensaje fue eliminado
  */
 
+function isOriginalDiscordStickerMessage(message) {
+  if (!message.stickers || message.stickers.size === 0) return false;
+
+  // Solo skip si el mensaje prácticamente no tiene texto
+  if (message.content && message.content.trim().length > 0) return false;
+
+  // Todos los stickers del mensaje deben ser estándar/originales
+  return message.stickers.every(sticker => {
+    // type 1 suele corresponder a sticker estándar de Discord
+    return sticker.type === 1;
+  });
+}
+
 async function checkMessage(message) {
   if (message.author.bot) return false;
   if (!message.guild) return false;
+  if (isOriginalDiscordStickerMessage(message)) return false;
 
   // Verifica si el autor tiene un rol exento
   const memberRoles = message.member?.roles.cache;
