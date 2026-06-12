@@ -189,6 +189,20 @@ const crossChannelTracker = new Map();
  * @returns {boolean} true si el mensaje fue eliminado
  */
 
+// Track cross-channel: registra el mensaje en el tracker para detectar spam multicanal
+function trackCrossChannelMessage(message) {
+  const userId = message.author.id;
+  const content = message.content.trim().toLowerCase();
+  const now = Date.now();
+  const { timeWindow } = AUTOMOD_CONFIG.crossChannelSpam;
+
+  if (!crossChannelTracker.has(userId)) crossChannelTracker.set(userId, []);
+  const history = crossChannelTracker.get(userId);
+  const recent = history.filter(e => now - e.timestamp < timeWindow);
+  recent.push({ channelId: message.channel.id, content, timestamp: now });
+  crossChannelTracker.set(userId, recent);
+}
+
 function isOriginalDiscordStickerMessage(message) {
   if (!message.stickers || message.stickers.size === 0) return false;
 
@@ -211,6 +225,9 @@ async function checkMessage(message) {
   const memberRoles = message.member?.roles.cache;
   const isExempt = AUTOMOD_CONFIG.exemptRoles.some(id => memberRoles?.has(id));
   if (isExempt) return false;
+
+  // Track cross-channel antes de cualquier regla para que ningún mensaje quede sin registrar
+  trackCrossChannelMessage(message);
 
   // Corre todas las comprobaciones
   if (await checkBannedWords(message)) return true;
@@ -285,36 +302,40 @@ async function checkSuspiciousWords(message) {
       );
     }
 
-  await logsSusMes.send({
-    content: pingTeam ? `<@&${config.roles.team}>` : undefined,
-    embeds: [{
-      color,
-      title: `${emoji} Mensaje sospechoso — Nivel ${level}`,
-      fields: [
-        {
-          name: 'Usuario',
-          value: `${message.author.tag} (<@${message.author.id}>)`,
-          inline: true,
-        },
-        {
-          name: 'Canal',
-          value: `<#${message.channelId}>`,
-          inline: true,
-        },
-        {
-          name: `Coincidencias (${count})`,
-          value: matches.map(w => `\`${w}\``).join(', '),
-        },
-        {
-          name: 'Mensaje',
-          value: `\`\`\`${cited}\`\`\``,
-        },
-      ],
-      timestamp: new Date().toISOString(),
-      footer: { text: `ID: ${message.author.id} · El mensaje NO fue eliminado` },
-    }],
-    components,  // 🆕 vacío en bajo/medio, con botón en alto
-  });
+  try {
+    await logsSusMes.send({
+      content: pingTeam ? `<@&${config.roles.team}>` : undefined,
+      embeds: [{
+        color,
+        title: `${emoji} Mensaje sospechoso — Nivel ${level}`,
+        fields: [
+          {
+            name: 'Usuario',
+            value: `${message.author.tag} (<@${message.author.id}>)`,
+            inline: true,
+          },
+          {
+            name: 'Canal',
+            value: `<#${message.channelId}>`,
+            inline: true,
+          },
+          {
+            name: `Coincidencias (${count})`,
+            value: matches.map(w => `\`${w}\``).join(', '),
+          },
+          {
+            name: 'Mensaje',
+            value: `\`\`\`${cited}\`\`\``,
+          },
+        ],
+        timestamp: new Date().toISOString(),
+        footer: { text: `ID: ${message.author.id} · El mensaje NO fue eliminado` },
+      }],
+      components,
+    });
+  } catch (err) {
+    console.error('[AutoMod] Error al enviar alerta de palabras sospechosas:', err.message);
+  }
 }
 
 
@@ -353,6 +374,16 @@ async function checkSpam(message) {
   if (!spamTracker.has(userId)) spamTracker.set(userId, new Map());
   const userMap = spamTracker.get(userId);
 
+  // Limpia entradas viejas del inner map para evitar memory leak
+  for (const [key, timestamps] of userMap) {
+    const valid = timestamps.filter(t => now - t < timeWindow);
+    if (valid.length === 0) {
+      userMap.delete(key);
+    } else {
+      userMap.set(key, valid);
+    }
+  }
+
   if (!userMap.has(content)) userMap.set(content, []);
   const timestamps = userMap.get(content);
 
@@ -360,6 +391,9 @@ async function checkSpam(message) {
   const recent = timestamps.filter(t => now - t < timeWindow);
   recent.push(now);
   userMap.set(content, recent);
+
+  // Limpia userIds del spamTracker que ya no tienen mensajes trackeados
+  if (userMap.size === 0) spamTracker.delete(userId);
 
   if (recent.length >= maxRepeats) {
     userMap.delete(content); // resetea solo este mensaje
@@ -523,15 +557,12 @@ async function checkCrossChannelSpam(message) {
   const content = message.content.trim().toLowerCase();
   const now     = Date.now();
 
-  if (!crossChannelTracker.has(userId)) crossChannelTracker.set(userId, []);
   const history = crossChannelTracker.get(userId);
+  if (!history) return false;
 
-  // Limpia entradas antiguas
+  // Limpia entradas antiguas (trackCrossChannelMessage ya añadió la actual)
   const recent = history.filter(e => now - e.timestamp < timeWindow);
-
-  // Añade entrada actual
-  recent.push({ channelId: message.channel.id, content, timestamp: now });
-  crossChannelTracker.set(userId, recent);
+  crossChannelTracker.set(userId, recent); // guarda versión limpia
 
   // Filtra solo las entradas con el mismo contenido
   const sameContent = recent.filter(e => e.content === content);
@@ -588,21 +619,25 @@ async function checkCrossChannelSpam(message) {
   // Notifica a los mods
   const logsSpam = message.guild.channels.cache.get(config.channels.logsSpam);
   if (logsSpam) {
-    await logsSpam.send({
-      content: `<@&${config.roles.team}> 🚨 Cross-channel spam detectado de ${message.author} en ${uniqueChannels.size} canales.`,
-      embeds: [{
-        color: config.colors.error,
-        title: '⏱️ Timeout por spam cross-channels — AutoMod',
-        fields: [
-          { name: 'Usuario',  value: `${message.author.tag} (<@${message.author.id}>)`, inline: true },
-          { name: 'Canal',    value: `<#${message.channelId}>`,                          inline: true },
-          { name: 'Duración', value: '2 dias',                                       inline: true },
-        ],
-        timestamp: new Date().toISOString(),
-        footer: { text: `ID: ${message.author.id}` },
-      }],
-      components: [row],
-    });
+    try {
+      await logsSpam.send({
+        content: `<@&${config.roles.team}> 🚨 Cross-channel spam detectado de ${message.author} en ${uniqueChannels.size} canales.`,
+        embeds: [{
+          color: config.colors.error,
+          title: '⏱️ Timeout por spam cross-channels — AutoMod',
+          fields: [
+            { name: 'Usuario',  value: `${message.author.tag} (<@${message.author.id}>)`, inline: true },
+            { name: 'Canal',    value: `<#${message.channelId}>`,                          inline: true },
+            { name: 'Duración', value: '2 dias',                                       inline: true },
+          ],
+          timestamp: new Date().toISOString(),
+          footer: { text: `ID: ${message.author.id}` },
+        }],
+        components: [row],
+      });
+    } catch (err) {
+      console.error('[AutoMod] Error al enviar alerta de cross-channel spam:', err.message);
+    }
   } else { console.error ('No consiguió el canal de spam-messages-alert') }
 
   /* const logChannel = message.guild.channels.cache.get(config.channels.logs);
