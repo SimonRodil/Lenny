@@ -59,6 +59,11 @@ function scoreAccount(member) {
  * Solo alerta — no banea, no expulsa. Los mods deciden.
  */
 async function checkSuspiciousAccount(member) {
+  // Omite miembros con roles staff
+  const staffRoles = [config.roles.admin, config.roles.modSenior, config.roles.mod, config.roles.team];
+  const memberRoles = member.roles?.cache;
+  if (memberRoles && staffRoles.some(id => memberRoles.has(id))) return;
+
   const score   = scoreAccount(member);
   const total   = score.reduce((sum, s) => sum + s.pts, 0);
 

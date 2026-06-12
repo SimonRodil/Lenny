@@ -157,7 +157,7 @@ suspiciousWords: {
   ],
 
   // Roles exentos del automod (IDs)
-  exemptRoles: [config.roles.team], // añade IDs de roles de admin/mod
+  exemptRoles: [config.roles.team, config.roles.admin, config.roles.modSenior, config.roles.mod],
 };
 
 
