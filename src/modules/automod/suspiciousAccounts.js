@@ -60,7 +60,7 @@ function scoreAccount(member) {
  */
 async function checkSuspiciousAccount(member) {
   // Omite miembros con roles staff
-  const staffRoles = [config.roles.admin, config.roles.modSenior, config.roles.mod, config.roles.team];
+  const staffRoles = config.roles.staff.map(k => config.roles[k]);
   const memberRoles = member.roles?.cache;
   if (memberRoles && staffRoles.some(id => memberRoles.has(id))) return;
 

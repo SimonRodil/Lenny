@@ -36,6 +36,7 @@ module.exports = {
     mod:      '',
     team:     '',
     verified: '',
+    staff:    ['admin', 'modSenior', 'mod', 'team'],
   },
 
   // IDs de canales importantes

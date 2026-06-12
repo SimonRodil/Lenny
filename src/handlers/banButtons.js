@@ -12,10 +12,7 @@ module.exports = (client) => {
 
     const { customId, guild, member } = interaction;
 
-    const hasPermission =
-      member.roles.cache.has(config.roles.mod) ||
-      member.roles.cache.has(config.roles.modSenior) ||
-      member.roles.cache.has(config.roles.admin);
+    const hasPermission = config.roles.staff.some(k => member.roles.cache.has(config.roles[k]));
 
     if (!hasPermission) {
       return interaction.reply({
