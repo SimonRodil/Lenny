@@ -1,83 +1,98 @@
-# Lenny - Language Learning Discord Bot
+# Lenny — Discord Moderation Bot
 
-## Overview
-Lenny is a Discord bot designed for a public server dedicated to language learning. It aims to foster an engaging community by providing tools and features to assist users in practicing and learning languages. Lenny will include commands to interact with users, facilitate language-related activities, and incorporate security features to ensure a safe and welcoming environment.
+Lenny is a Discord bot focused on server moderation with a fully built-out automod system, detailed logging, and a ban-button interface for moderators.
 
 ## Features
-- **Basic Commands**: Currently supports `!ping` (responds with "Pong!") and `!hello` (greets users).
-- **Future Plans**:
-  - Language learning tools (e.g., vocabulary quizzes, translation challenges).
-  - Interactive features to connect users for language practice.
-  - Security features to moderate content and protect user privacy.
-  - Slash command support for a modern Discord experience.
 
-## Installation
-Follow these steps to set up Lenny on your local machine or server.
+### AutoMod (completely configurable)
+- **Palabras prohibidas** — Detecta y borra automáticamente insultos, slurs, amenazas, scams y contenido sexual explícito.
+- **Anti-spam** — Timeout de 10min si un usuario repite el mismo mensaje 3+ veces en 60s.
+- **Anti cross-channel spam** — Timeout de 2 días si un usuario publica el mismo texto en 3+ canales distintos.
+- **Anti-links** — Bloquea URLs externas salvo dominios permitidos (YouTube, Twitch, Twitter, Spotify, etc.).
+- **Palabras sospechosas** — Alerta silenciosa a mods ante frases de estafas, crypto scams, phishing (sin borrar el mensaje).
+- **Cuentas sospechosas** — Al puntuar una cuenta nueva al unirse (edad, avatar, nombre, flags de Discord), alerta a mods si supera el umbral.
+- **Botones de moderación** — Banear o redimir directamente desde las alertas de spam/sospechosos.
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) (version 16 or higher)
-- A Discord account and a bot application created via the [Discord Developer Portal](https://discord.com/developers/applications)
-- Git (optional, for cloning the repository)
+### Logging
+- Log de mensajes eliminados
+- Log de mensajes editados (deshabilitado por ahora)
+- Log de miembros que se unen / se van
+
+### Bienvenidas
+- Mensaje de bienvenida configurable al unirse un nuevo miembro.
+
+### Comandos
+- `/ping` — Muestra la latencia del bot y de la API.
+- `/test` — Comando placeholder.
+
+## Stack técnico
+- **Runtime:** Node.js 18+
+- **Librería:** discord.js v14
+- **Config:** `dotenv` + `config.js`
+
+## Instalación
+
+### Prerrequisitos
+- Node.js 18 o superior
+- Una aplicación de bot en el [Discord Developer Portal](https://discord.com/developers/applications)
 
 ### Setup
-1. **Clone the Repository** (if using Git):
+
+1. **Clona el repositorio:**
    ```bash
    git clone https://github.com/your-username/lenny.git
    cd lenny
    ```
 
-2. **Install Dependencies**:
-   Run the following command to install required packages:
+2. **Instala dependencias:**
    ```bash
    npm install
    ```
 
-3. **Configure Environment Variables**:
-   - Create a `.env` file in the project root.
-   - Add your Discord bot token (obtained from the Discord Developer Portal):
+3. **Configura variables de entorno:**
+   - Copia `.env.example` a `.env`:
+     ```bash
+     cp .env.example .env
      ```
-     DISCORD_TOKEN=your_discord_bot_token_here
-     ```
-   - Ensure `.env` is listed in `.gitignore` to prevent it from being uploaded to GitHub.
+   - Rellena los valores:
+     - `TOKEN` — token de tu bot (Discord Developer Portal → Bot)
+     - `CLIENT_ID` — ID de tu aplicación (OAuth2 → General)
+     - `GUILD_ID` — ID del servidor donde usarás los comandos
 
-4. **Run the Bot**:
-   Start the bot with:
+4. **Configura el bot:**
+   - Copia `config-blank.js` a `config.js`.
+   - Rellena los IDs de roles, canales y ajusta los módulos activos (`features`).
+
+5. **Registra los comandos slash:**
+   ```bash
+   node deploy-commands.js
+   ```
+
+6. **Inicia el bot:**
    ```bash
    npm start
    ```
-   The bot should log in and display `Logged in as Lenny#1234` in the console.
 
-5. **Invite the Bot to Your Server**:
-   - In the Discord Developer Portal, go to your bot's application, navigate to the "OAuth2" tab, and generate an invite link with the required permissions (e.g., "Send Messages," "Read Messages").
-   - Use the link to add Lenny to your Discord server.
+## Configuración (`config.js`)
 
-## Usage
-Once Lenny is in your server, you can use the following commands:
-- `!ping`: Responds with "Pong!" to verify the bot is online.
-- `!hello`: Greets the user with a friendly message.
+Cada módulo del bot se puede activar/desactivar individualmente:
 
-More commands for language learning and community interaction will be added in future updates.
+```js
+features: {
+  welcome: false,
+  logJoin: false,
+  logLeaves: false,
+  automod: {
+    enabled:          true,
+    bannedWords:      true,
+    spam:             true,
+    crossChannelSpam: true,
+    links:            true,
+    suspiciousWords:  true,
+    suspiciousAccounts: true,
+  },
+}
+```
 
-## Contributing
-Contributions are welcome! To contribute:
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature/your-feature`).
-3. Make your changes and commit them (`git commit -m "Add your feature"`).
-4. Push to the branch (`git push origin feature/your-feature`).
-5. Open a pull request.
-
-Please ensure your code follows the project's coding style and includes appropriate documentation.
-
-## Security
-Lenny is being developed with security in mind to ensure a safe environment for language learners. Planned security features include:
-- Message moderation to prevent inappropriate content.
-- User verification to maintain a trusted community.
-- Rate limiting to prevent abuse of bot commands.
-
-## License
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contact
-For questions, suggestions, or issues, please open an issue on the [GitHub repository](https://github.com/your-username/lenny) or contact the project maintainer.
-
-Happy language learning with Lenny!
+## Licencia
+MIT
