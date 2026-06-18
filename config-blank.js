@@ -27,6 +27,16 @@ module.exports = {
     welcome: false, // ← ponlo en true para reactivar
     logJoin: false, // ← ponlo en true para reactivar
     logLeaves: false, // ← ponlo en true para reactivar
+    // ── AutoMod ──
+    automod: {
+      enabled:          true,   // master switch del automod
+      bannedWords:      true,   // palabras prohibidas (borra + alerta)
+      spam:             true,   // anti-repetición (timeout 10min)
+      crossChannelSpam: true,   // mismo texto en N canales (timeout 2d)
+      links:            true,   // anti-links externos
+      suspiciousWords:  true,   // alerta silenciosa de frases sospechosas
+      suspiciousAccounts: true, // alerta de cuentas sospechosas al unirse
+    },
   },
 
   // IDs de roles importantes (rellena con los de tu servidor)

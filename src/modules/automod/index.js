@@ -205,6 +205,7 @@ function isOriginalDiscordStickerMessage(message) {
 async function checkMessage(message) {
   if (message.author.bot) return false;
   if (!message.guild) return false;
+  if (!config.features.automod.enabled) return false;
   if (isOriginalDiscordStickerMessage(message)) return false;
 
   // Verifica si el autor tiene un rol exento
@@ -212,15 +213,15 @@ async function checkMessage(message) {
   const isExempt = AUTOMOD_CONFIG.exemptRoles.some(id => memberRoles?.has(id));
   if (isExempt) return false;
 
-  // Corre todas las comprobaciones
-  if (await checkBannedWords(message)) return true;
-  if (await checkCrossChannelSpam(message)) return true;
-  if (await checkSpam(message)) return true;
+  // Corre todas las comprobaciones según los toggles de configuración
+  if (config.features.automod.bannedWords && await checkBannedWords(message)) return true;
+  if (config.features.automod.crossChannelSpam && await checkCrossChannelSpam(message)) return true;
+  if (config.features.automod.spam && await checkSpam(message)) return true;
 
   // Establecemos a las suspicious words de ultimo ya que primero nos aseguramos de que no pase por spam.
-  await checkSuspiciousWords(message);
+  if (config.features.automod.suspiciousWords) await checkSuspiciousWords(message);
 
-  if (AUTOMOD_CONFIG.blockLinks && await checkLinks(message)) return true;
+  if (config.features.automod.links && AUTOMOD_CONFIG.blockLinks && await checkLinks(message)) return true;
 
   return false;
 }
