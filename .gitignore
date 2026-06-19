@@ -21,4 +21,6 @@ Dependency directories
 .env (LS-E)
 
 config.js
+src/config/wotd.js
 src/commands/info/test.js
+data/wotd-last.json
