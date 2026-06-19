@@ -17,7 +17,7 @@ module.exports = (client) => {
     if (!hasPermission) {
       return interaction.reply({
         content: `${config.emojis.error} No tienes permisos para usar este botón.`,
-        ephemeral: true,
+        flags: 64,
       });
     }
 
@@ -44,7 +44,7 @@ module.exports = (client) => {
       } catch (err) {
         await interaction.reply({
           content: `${config.emojis.error} Error al banear: \`${err.message}\``,
-          ephemeral: true,
+          flags: 64,
         });
       }
     }
@@ -71,7 +71,7 @@ module.exports = (client) => {
       } catch (err) {
         await interaction.reply({
           content: `${config.emojis.error} Error al redimir: \`${err.message}\``,
-          ephemeral: true,
+          flags: 64,
         });
       }
     }

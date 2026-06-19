@@ -38,7 +38,10 @@ function idEsValido(id) {
 }
 
 function esStaff(member) {
-  if (!member?.roles?.cache) return false;
+  if (!member) return false;
+  if (member.id === member.guild?.ownerId) return true;
+  if (member.permissions?.has('Administrator')) return true;
+  if (!member.roles?.cache) return false;
   const staffRoleIds = config.roles.staff.map(k => config.roles[k]);
   return staffRoleIds.some(id => member.roles.cache.has(id));
 }
@@ -94,7 +97,7 @@ module.exports = {
     .setDescription('Envía una imagen aleatoria de Unsplash a los canales de práctica'),
 
   async execute(interaction, client) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 });
 
     if (!esStaff(interaction.member)) {
       return await interaction.editReply('❌ Solo el equipo de moderación puede usar este comando.');
