@@ -1,6 +1,7 @@
 // src/modules/automod/index.js
 const { logMessageDelete } = require('../logger');
 const config = require('../../../config');
+const sharp = require('sharp');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 // ── Configuración del automod ──────────────────────
@@ -112,6 +113,37 @@ suspiciousWords: {
     'dm me', 'message me for details', 'check my bio',
     'link in bio', 'drop your email',
 
+    // ── Caza talentos / Reclutamiento (ES) ────────────────
+    'caza talentos', 'cazatalentos',
+    'estamos reclutando', 'buscamos talento',
+    'estamos contratando', 'reclutador', 'reclutadora',
+    'quiero conectar contigo', 'conectar contigo',
+    'me encantaría conectar', 'me gustaría conectar',
+    'oportunidad laboral', 'oportunidad de trabajo',
+    'te interesa trabajar', 'buscamos personas',
+    'unete a mi equipo', 'únete a mi equipo',
+    'trabaja para nosotros', 'oferta de empleo',
+    'empleo remoto', 'trabajo remoto disponible',
+    'vacante disponible', 'estamos expandiendo',
+    'expandiendo equipo', 'crecimiento profesional',
+    'desarrollo profesional', 'carrera profesional',
+    'oportunidad única', 'entrevista',
+    'proceso de selección', 'busco talento',
+    'talento para mi equipo', 'te interesa',
+
+    // ── Talent scouting / Recruitment (EN) ────────────────
+    'talent scout', 'recruiting', 'recruiter',
+    'we are hiring', 'we are recruiting',
+    'looking for talent', 'join my team',
+    'career opportunity', 'job opening',
+    'work for us', 'i want to connect with you',
+    'would love to connect', 'lets connect',
+    'remote position', 'open position',
+    'hiring remotely', 'we are expanding',
+    'growing our team', 'professional growth',
+    'career growth', 'unique opportunity',
+    'interview process', 'hiring process',
+
   ], // ← cierra words array
 
     thresholds: {   // ← FALTA ESTO — sin esto checkSuspiciousWords explota
@@ -132,6 +164,7 @@ suspiciousWords: {
     maxChannels:  3,      // cuántos canales distintos antes de actuar
     timeWindow:   120000,  // milisegundos (120 segundos)
     timeoutOnDetect: true, // true = timeout 2 días, false = solo borrar + alertar
+    imageHashThreshold: 10, // distancia Hamming máx para considerar misma imagen (0-64)
   },
 
   // Anti-links: bloquear URLs externas
@@ -179,8 +212,52 @@ const SUSPICIOUS_REGEX = AUTOMOD_CONFIG.suspiciousWords.words.map(word => ({
 // Mapa en memoria para tracking de spam: userId → [timestamps]
 const spamTracker = new Map();
 
-// Mapa para tracking de spam cross-canales: userId → [{ channelId, content, timestamp }]
+// Mapa para tracking de spam cross-canales: userId → [{ channelId, content, timestamp, attachmentUrls }]
 const crossChannelTracker = new Map();
+
+// Mapa para cache de hash perceptual: attachmentUrl → hash (BigInt)
+const imageHashCache = new Map();
+
+// ── Hash perceptual con sharp ──────────────────────
+// Genera un average hash (aHash) de 64 bits para una imagen.
+// Solo se calcula una vez por URL y se cachea.
+async function getImageHash(url) {
+  if (imageHashCache.has(url)) return imageHashCache.get(url);
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const pixels = await sharp(buffer)
+      .resize(8, 8, { fit: 'cover' })
+      .grayscale()
+      .raw()
+      .toBuffer();
+
+    const avg = pixels.reduce((a, b) => a + b, 0) / pixels.length;
+    let hash = 0n;
+    for (let i = 0; i < pixels.length; i++) {
+      if (pixels[i] >= avg) hash |= (1n << BigInt(i));
+    }
+
+    imageHashCache.set(url, hash);
+    return hash;
+  } catch (err) {
+    console.error('[AutoMod] Error al generar hash de imagen:', err.message);
+    return null;
+  }
+}
+
+// Distancia Hamming entre dos hashes de 64 bits
+function hammingDistance(a, b) {
+  let diff = a ^ b;
+  let count = 0;
+  while (diff) {
+    count += Number(diff & 1n);
+    diff >>= 1n;
+  }
+  return count;
+}
 
 
 /**
@@ -199,7 +276,8 @@ function trackCrossChannelMessage(message) {
   if (!crossChannelTracker.has(userId)) crossChannelTracker.set(userId, []);
   const history = crossChannelTracker.get(userId);
   const recent = history.filter(e => now - e.timestamp < timeWindow);
-  recent.push({ channelId: message.channel.id, content, timestamp: now });
+  const attachmentUrls = [...message.attachments.values()].map(a => a.url);
+  recent.push({ channelId: message.channel.id, content, timestamp: now, attachmentUrls });
   crossChannelTracker.set(userId, recent);
 }
 
@@ -550,54 +628,95 @@ async function punish(message, reason, context = null)  {
 }
 
 // ── Anti cross-channel spam ────────────────────────
-// Detecta si el mismo usuario envió el mismo texto en N canales distintos
-// dentro de la ventana de tiempo configurada.
+// Detecta si el mismo usuario envió el mismo contenido (texto o imágenes)
+// en N canales distintos dentro de la ventana de tiempo configurada.
+// Niveles de detección:
+//   1. Coincidencia de texto (existente)
+//   2. Coincidencia de URLs de attachment (rápido)
+//   3. Hash perceptual de imágenes con sharp (solo si texto vacío o diferente)
 async function checkCrossChannelSpam(message) {
-  const { maxChannels, timeWindow, timeoutOnDetect } = AUTOMOD_CONFIG.crossChannelSpam;
+  const { maxChannels, timeWindow, timeoutOnDetect, imageHashThreshold } = AUTOMOD_CONFIG.crossChannelSpam;
   const userId  = message.author.id;
   const content = message.content.trim().toLowerCase();
   const now     = Date.now();
+  const currentAttachmentUrls = [...message.attachments.values()].map(a => a.url);
 
   const history = crossChannelTracker.get(userId);
   if (!history) return false;
 
   // Limpia entradas antiguas (trackCrossChannelMessage ya añadió la actual)
   const recent = history.filter(e => now - e.timestamp < timeWindow);
-  crossChannelTracker.set(userId, recent); // guarda versión limpia
+  crossChannelTracker.set(userId, recent);
 
-  // Filtra solo las entradas con el mismo contenido
+  // ── Nivel 1: Coincidencia de texto (existente) ──
   const sameContent = recent.filter(e => e.content === content);
   const uniqueChannels = new Set(sameContent.map(e => e.channelId));
+
+  // ── Nivel 2: Coincidencia de URLs de attachment ──
+  if (currentAttachmentUrls.length > 0) {
+    for (const entry of recent) {
+      if (uniqueChannels.has(entry.channelId)) continue;
+      if (entry.attachmentUrls.some(url => currentAttachmentUrls.includes(url))) {
+        uniqueChannels.add(entry.channelId);
+        if (uniqueChannels.size >= maxChannels) break;
+      }
+    }
+  }
+
+  // ── Nivel 3: Hash perceptual (solo si no hay suficiente evidencia aún) ──
+  if (uniqueChannels.size < maxChannels && currentAttachmentUrls.length > 0) {
+    const currentHash = await getImageHash(currentAttachmentUrls[0]);
+    if (currentHash !== null) {
+      for (const entry of recent) {
+        if (uniqueChannels.has(entry.channelId)) continue;
+        if (entry.attachmentUrls.length === 0) continue;
+        const entryHash = await getImageHash(entry.attachmentUrls[0]);
+        if (entryHash !== null && hammingDistance(currentHash, entryHash) <= imageHashThreshold) {
+          uniqueChannels.add(entry.channelId);
+          if (uniqueChannels.size >= maxChannels) break;
+        }
+      }
+    }
+  }
 
   if (uniqueChannels.size < maxChannels) return false;
 
   // ── Acción ──────────────────────────────────────
-  crossChannelTracker.delete(userId); // resetea
+  crossChannelTracker.delete(userId);
 
-  // Borra todos los mensajes detectados (el actual + los anteriores si aún existen)
-  for (const entry of sameContent) {
+  // Borra todos los mensajes detectados
+  const allEntries = recent.filter(e => uniqueChannels.has(e.channelId));
+  for (const entry of allEntries) {
     const ch = message.guild.channels.cache.get(entry.channelId);
     if (!ch) continue;
     const msgs = await ch.messages.fetch({ limit: 20 }).catch(() => null);
     if (!msgs) continue;
-    const target = msgs.find(m => m.author.id === userId && m.content.trim().toLowerCase() === content);
+    const target = msgs.find(m => {
+      if (m.author.id !== userId) return false;
+      if (m.content.trim().toLowerCase() === content) return true;
+      if (currentAttachmentUrls.length > 0) {
+        const mUrls = [...m.attachments.values()].map(a => a.url);
+        if (mUrls.some(url => currentAttachmentUrls.includes(url))) return true;
+      }
+      return false;
+    });
     if (target) await target.delete().catch(() => {});
   }
 
-  // Le da un timeout al usuario por hacer spam
+  // Timeout 2 días
   if (timeoutOnDetect) {
     const member = message.guild.members.cache.get(userId)
       || await message.guild.members.fetch(userId).catch(() => null);
 
     if (member) {
       await member.timeout(
-        2 * 24 * 60 * 60 * 1000,  // 2 días
-        `[AUTOMOD] Cross-channel spam: mismo mensaje en ${uniqueChannels.size} canales`
+        2 * 24 * 60 * 60 * 1000,
+        `[AUTOMOD] Cross-channel spam: mismo contenido en ${uniqueChannels.size} canales`
       ).catch(err => console.error('[AUTOMOD] Error al aplicar timeout:', err.message));
     }
   }
 
-  // Alerta al canal de logs con mención al equipo de mods
+  // Log
   await logMessageDelete({
     ...message,
     content: `[AUTOMOD: cross-channel spam en ${uniqueChannels.size} canales] ${message.content}`,
@@ -608,16 +727,15 @@ async function checkCrossChannelSpam(message) {
       .setCustomId(`spam_ban_${message.author.id}`)
       .setLabel('Banear')
       .setEmoji('🔨')
-      .setStyle(ButtonStyle.Danger),   // rojo
+      .setStyle(ButtonStyle.Danger),
 
     new ButtonBuilder()
       .setCustomId(`spam_redeem_${message.author.id}`)
       .setLabel('Redimir')
       .setEmoji('🕊️')
-      .setStyle(ButtonStyle.Success),  // verde
+      .setStyle(ButtonStyle.Success),
   );
 
-  // Notifica a los mods
   const logsSpam = message.guild.channels.cache.get(config.channels.logsSpam);
   if (logsSpam) {
     try {
@@ -629,7 +747,7 @@ async function checkCrossChannelSpam(message) {
           fields: [
             { name: 'Usuario',  value: `${message.author.tag} (<@${message.author.id}>)`, inline: true },
             { name: 'Canal',    value: `<#${message.channelId}>`,                          inline: true },
-            { name: 'Duración', value: '2 dias',                                       inline: true },
+            { name: 'Duración', value: '2 dias',                                           inline: true },
           ],
           timestamp: new Date().toISOString(),
           footer: { text: `ID: ${message.author.id}` },
@@ -639,12 +757,7 @@ async function checkCrossChannelSpam(message) {
     } catch (err) {
       console.error('[AutoMod] Error al enviar alerta de cross-channel spam:', err.message);
     }
-  } else { console.error ('No consiguió el canal de spam-messages-alert') }
-
-  /* const logChannel = message.guild.channels.cache.get(config.channels.logs);
-  if (logChannel) {
-    await logChannel.send(`<@&${config.roles.team}> 🚨 Cross-channel spam detectado de ${message.author} en ${uniqueChannels.size} canales.`);
-  } */
+  } else { console.error('No consiguió el canal de spam-messages-alert') }
 
   return true;
 }
