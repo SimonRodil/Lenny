@@ -1,6 +1,7 @@
 const { handleWelcome }           = require('../modules/welcome');
 const { logMemberJoin }           = require('../modules/logger');
 const { checkSuspiciousAccount }  = require('../modules/automod/suspiciousAccounts');
+const config = require('../../config');
 
 module.exports = {
   name: 'guildMemberAdd',
@@ -8,6 +9,8 @@ module.exports = {
   async execute(member, client) {
     await handleWelcome(member);
     await logMemberJoin(member);
-    await checkSuspiciousAccount(member); // 👈 detección de cuentas sospechosas
+    if (config.features.automod?.suspiciousAccounts) {
+      await checkSuspiciousAccount(member);
+    }
   },
 };
