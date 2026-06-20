@@ -28,51 +28,6 @@ function createAPI(client) {
     });
   });
 
-  // GET /api/stats
-  app.get('/api/stats', async (req, res) => {
-    const guild = client.guilds.cache.first();
-    if (!guild) return res.json({ membersByDay: [], messagesByChannel: [], topCommands: [], automodBlocks: [] });
-    await guild.members.fetch();
-
-    // ── Miembros por día de la semana ──
-    const dayNames = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
-    const dayCounts = [0, 0, 0, 0, 0, 0, 0];
-    guild.members.cache.forEach(m => {
-      if (m.joinedAt) {
-        const dow = m.joinedAt.getUTCDay(); // 0=Sun … 6=Sat
-        dayCounts[dow]++;
-      }
-    });
-    // Reordenar para que empiece en Lun (índice 1 → Lun, … 6 → Sab, 0 → Dom al final)
-    const membersByDay = [1, 2, 3, 4, 5, 6, 0].map(i => ({ date: dayNames[i], count: dayCounts[i] }));
-
-    // ── Mensajes por canal (acumulados via messageCreate) ──
-    const messagesByChannel = [...(client.messageCounts?.entries() ?? [])]
-      .map(([channelId, count]) => {
-        const ch = guild.channels.cache.get(channelId);
-        return ch ? { channel: `#${ch.name}`, count } : null;
-      })
-      .filter(Boolean)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
-    // ── Comandos más usados ──
-    const topCommands = [...(client.commandCounts?.entries() ?? [])]
-      .map(([command, count]) => ({ command: `/${command}`, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-
-    // ── Bloqueos de Auto-Mod (placeholder) ──
-    const automodBlocks = [
-      { category: 'Spam', count: 0 },
-      { category: 'Links', count: 0 },
-      { category: 'Insultos', count: 0 },
-      { category: 'Sospechosos', count: 0 },
-    ];
-
-    res.json({ membersByDay, messagesByChannel, topCommands, automodBlocks });
-  });
-
   // GET /api/channels
   app.get('/api/channels', (req, res) => {
     const guild = client.guilds.cache.first();
