@@ -24,3 +24,4 @@ config.js
 src/config/wotd.js
 src/commands/info/test.js
 data/wotd-last.json
+data/wotd-history.json

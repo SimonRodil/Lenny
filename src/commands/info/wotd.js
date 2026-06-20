@@ -57,7 +57,7 @@ function obtenerDatos() {
       return JSON.parse(fs.readFileSync(COOLDOWN_PATH, 'utf8'));
     }
   } catch {}
-  return { fecha: null, categoriasUsadas: [] };
+  return { fecha: null, categoriasUsadas: [], envios: [] };
 }
 
 function guardarDatos(datos) {
@@ -150,6 +150,7 @@ module.exports = {
       const tituloCat = `${catEsp.charAt(0).toUpperCase() + catEsp.slice(1)}`;
 
       let enviados = 0;
+      const envios = [];
 
       for (const [idioma, canalId] of canalesValidos) {
         const canal = client.channels.cache.get(canalId.trim());
@@ -167,7 +168,14 @@ module.exports = {
           .setFooter({ text: `${msg.footer} ${data.user.name} ${msg.enlace}`, iconURL: data.user.profile_image?.small })
           .setTimestamp();
 
-        await canal.send({ content: contenido, embeds: [embed] });
+        const sent = await canal.send({ content: contenido, embeds: [embed] });
+        envios.push({
+          channelId: canal.id,
+          channelName: idioma,
+          messageId: sent.id,
+          photoUrl: data.urls.regular,
+          timestamp: new Date().toISOString(),
+        });
         enviados++;
       }
 
@@ -178,12 +186,13 @@ module.exports = {
       const usadas = [...(datos.categoriasUsadas || []), categoria];
       if (usadas.length >= CATEGORIAS.length) usadas.length = 0;
 
-      guardarDatos({ fecha: hoy(), categoriasUsadas: usadas });
+      guardarDatos({ fecha: hoy(), categoriasUsadas: usadas, envios });
       agregarHistorial({
         date: hoy(),
         category: tituloCat,
         photographer: data.user.name,
         url: data.urls.regular,
+        envios,
       });
       await interaction.editReply(`✅ Imagen enviada (${tituloCat}) a ${enviados} canal(es).`);
     } catch (err) {
