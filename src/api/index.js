@@ -47,7 +47,8 @@ function createAPI(client) {
     const membersByDay = [1, 2, 3, 4, 5, 6, 0].map(i => ({ date: dayNames[i], count: dayCounts[i] }));
 
     // ── Mensajes por canal (real-time via REST) ──
-    const textChs = guild.channels.cache.filter(ch => ch.isTextBased() && ch.parentId);
+    // Solo canales de texto normales (0) y anuncios (5), sin threads/foros/voice
+    const textChs = guild.channels.cache.filter(ch => (ch.type === 0 || ch.type === 5) && ch.parentId);
     const messagesByChannel = (await Promise.all(
       textChs.map(async ch => {
         try {
