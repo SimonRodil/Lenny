@@ -4,7 +4,6 @@ const path = require('path');
 const config = require('../../../config');
 const wotdConfig = require('../../config/wotd');
 
-const COOLDOWN_PATH = path.join(__dirname, '../../../data/wotd-last.json');
 const HISTORY_PATH = path.join(__dirname, '../../../data/wotd-history.json');
 
 const CATEGORIAS = [
@@ -51,21 +50,29 @@ function hoy() {
   return new Date().toISOString().slice(0, 10);
 }
 
+const CATEGORIA_AL_REVES = {
+  naturaleza: 'nature', viajes: 'travel', arquitectura: 'architecture',
+  paisaje: 'landscape', ciudad: 'city', comida: 'food',
+  animales: 'animals', agua: 'water', bosque: 'forest',
+  montaña: 'mountain', playa: 'beach', calle: 'street',
+  mercado: 'market', jardín: 'garden', atardecer: 'sunset',
+  interior: 'interior', pueblo: 'village', río: 'river',
+  lago: 'lake', flores: 'flower', 'vida salvaje': 'wildlife',
+  granja: 'farm', noche: 'night', lluvia: 'rain', nieve: 'snow',
+};
+
 function obtenerDatos() {
   try {
-    if (fs.existsSync(COOLDOWN_PATH)) {
-      return JSON.parse(fs.readFileSync(COOLDOWN_PATH, 'utf8'));
+    if (fs.existsSync(HISTORY_PATH)) {
+      const history = JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf8'));
+      if (Array.isArray(history) && history.length > 0) {
+        const ultimo = history[0];
+        const categorias = history.map(e => e.categoryKey || CATEGORIA_AL_REVES[e.category] || e.category.toLowerCase());
+        return { fecha: ultimo.date, categoriasUsadas: categorias };
+      }
     }
   } catch {}
-  return { fecha: null, categoriasUsadas: [], envios: [] };
-}
-
-function guardarDatos(datos) {
-  try {
-    const dir = path.dirname(COOLDOWN_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(COOLDOWN_PATH, JSON.stringify(datos));
-  } catch {}
+  return { fecha: null, categoriasUsadas: [] };
 }
 
 function agregarHistorial(entry) {
@@ -183,13 +190,10 @@ module.exports = {
         return await interaction.editReply('⚠️ No se pudo enviar a ningún canal. Revisa que los IDs en `src/config/wotd.js` sean correctos y que el bot tenga acceso a esos canales.');
       }
 
-      const usadas = [...(datos.categoriasUsadas || []), categoria];
-      if (usadas.length >= CATEGORIAS.length) usadas.length = 0;
-
-      guardarDatos({ fecha: hoy(), categoriasUsadas: usadas, envios });
       agregarHistorial({
         date: hoy(),
         category: tituloCat,
+        categoryKey: categoria,
         photographer: data.user.name,
         url: data.urls.regular,
         envios,
