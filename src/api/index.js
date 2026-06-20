@@ -1,4 +1,6 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const cors = require('cors');
 
 function createAPI(client) {
@@ -182,9 +184,13 @@ function createAPI(client) {
 
   // GET /api/wotd/history
   app.get('/api/wotd/history', (req, res) => {
-    let history = [];
-    try { history = require('../../data/wotd-last.json'); } catch {}
-    res.json(Array.isArray(history) ? history : []);
+    try {
+      const data = fs.readFileSync(path.join(__dirname, '../../data/wotd-history.json'), 'utf8');
+      const history = JSON.parse(data);
+      return res.json(Array.isArray(history) ? history : []);
+    } catch {
+      return res.json([]);
+    }
   });
 
   // POST /api/wotd/force

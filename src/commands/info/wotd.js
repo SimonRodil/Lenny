@@ -5,6 +5,7 @@ const config = require('../../../config');
 const wotdConfig = require('../../config/wotd');
 
 const COOLDOWN_PATH = path.join(__dirname, '../../../data/wotd-last.json');
+const HISTORY_PATH = path.join(__dirname, '../../../data/wotd-history.json');
 
 const CATEGORIAS = [
   'nature', 'travel', 'architecture', 'landscape', 'city',
@@ -64,6 +65,19 @@ function guardarDatos(datos) {
     const dir = path.dirname(COOLDOWN_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(COOLDOWN_PATH, JSON.stringify(datos));
+  } catch {}
+}
+
+function agregarHistorial(entry) {
+  try {
+    const dir = path.dirname(HISTORY_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    let history = [];
+    try { history = JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf8')); } catch {}
+    if (!Array.isArray(history)) history = [];
+    history.unshift(entry);
+    if (history.length > 30) history.length = 30;
+    fs.writeFileSync(HISTORY_PATH, JSON.stringify(history, null, 2));
   } catch {}
 }
 
@@ -165,6 +179,12 @@ module.exports = {
       if (usadas.length >= CATEGORIAS.length) usadas.length = 0;
 
       guardarDatos({ fecha: hoy(), categoriasUsadas: usadas });
+      agregarHistorial({
+        date: hoy(),
+        category: tituloCat,
+        photographer: data.user.name,
+        url: data.urls.regular,
+      });
       await interaction.editReply(`✅ Imagen enviada (${tituloCat}) a ${enviados} canal(es).`);
     } catch (err) {
       console.error('[WOTD] Error:', err.message);
