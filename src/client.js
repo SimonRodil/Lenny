@@ -16,6 +16,9 @@ class LennyClient extends Client {
 
     // Para manejar cooldowns por usuario/comando
     this.cooldowns = new Collection();
+
+    // Contador de usos de comandos para las estadísticas
+    this.commandCounts = new Map();
   }
 }
 

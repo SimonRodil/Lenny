@@ -9,6 +9,10 @@ module.exports = {
 
     try {
       await command.execute(interaction, client);
+      client.commandCounts.set(
+        interaction.commandName,
+        (client.commandCounts.get(interaction.commandName) || 0) + 1
+      );
     } catch (err) {
       console.error(`[ERROR] /${interaction.commandName}:`, err);
       const msg = { content: '❌ Algo salió mal.', flags: 64 }; // 64 = ephemeral
