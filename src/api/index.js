@@ -46,11 +46,18 @@ function createAPI(client) {
     // Reordenar para que empiece en Lun (índice 1 → Lun, … 6 → Sab, 0 → Dom al final)
     const membersByDay = [1, 2, 3, 4, 5, 6, 0].map(i => ({ date: dayNames[i], count: dayCounts[i] }));
 
-    // ── Mensajes por canal ──
-    const messagesByChannel = guild.channels.cache
-      .filter(ch => ch.isTextBased() && ch.parentId)
-      .map(ch => ({ channel: `#${ch.name}`, count: ch.messages?.cache?.size ?? 0 }))
-      .filter(ch => ch.count > 0)
+    // ── Mensajes por canal (real-time via REST) ──
+    const textChs = guild.channels.cache.filter(ch => ch.isTextBased() && ch.parentId);
+    const messagesByChannel = (await Promise.all(
+      textChs.map(async ch => {
+        try {
+          const msgs = await ch.messages.fetch({ limit: 100 });
+          return { channel: `#${ch.name}`, count: msgs.size };
+        } catch {
+          return null;
+        }
+      })
+    )).filter(Boolean)
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
