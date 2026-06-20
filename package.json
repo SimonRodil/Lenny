@@ -8,8 +8,10 @@
     "dev": "node deploy-commands.js && nodemon index.js"
   },
   "dependencies": {
+    "cors": "^2.8.6",
     "discord.js": "^14.24.2",
     "dotenv": "^16.6.1",
+    "express": "^5.2.1",
     "sharp": "^0.35.1"
   },
   "author": "",
