@@ -2,6 +2,8 @@
 const { logMessageDelete } = require('../logger');
 const config = require('../../../config');
 const sharp = require('sharp');
+const fs = require('fs');
+const path = require('path');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 // ── Configuración del automod ──────────────────────
@@ -209,6 +211,89 @@ const SUSPICIOUS_REGEX = AUTOMOD_CONFIG.suspiciousWords.words.map(word => ({
   regex: new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'),
 }));
 
+// ── Historial de alertas en memoria ────────────────
+const alertHistory = [];
+let alertIdCounter = 1;
+const MAX_ALERTS = 100;
+
+function pushAlert(type, user, content) {
+  alertHistory.unshift({
+    id: alertIdCounter++,
+    user,
+    type,
+    content,
+    timestamp: new Date().toISOString(),
+  });
+  if (alertHistory.length > MAX_ALERTS) alertHistory.length = MAX_ALERTS;
+}
+
+// ── Persistencia a disco ──────────────────────────
+const STATE_FILE = path.join(__dirname, '../../../data/automod.json');
+
+function saveState() {
+  try {
+    const dir = path.dirname(STATE_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(STATE_FILE, JSON.stringify({
+      bannedWords: AUTOMOD_CONFIG.bannedWords,
+      settings: { ...config.features.automod },
+    }, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[AutoMod] Error al guardar estado:', err.message);
+  }
+}
+
+function loadState() {
+  try {
+    const raw = fs.readFileSync(STATE_FILE, 'utf8');
+    const state = JSON.parse(raw);
+    if (state.bannedWords && Array.isArray(state.bannedWords)) {
+      AUTOMOD_CONFIG.bannedWords = state.bannedWords;
+      BANNED_REGEX.length = 0;
+      for (const word of state.bannedWords) {
+        BANNED_REGEX.push({
+          word,
+          regex: new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'),
+        });
+      }
+    }
+    if (state.settings && typeof state.settings === 'object') {
+      Object.assign(config.features.automod, state.settings);
+    }
+  } catch {
+    saveState();
+  }
+}
+
+// ── Gestión de palabras prohibidas ────────────────
+function getBannedWords() {
+  return [...AUTOMOD_CONFIG.bannedWords];
+}
+
+function addBannedWord(word) {
+  if (!word || word.trim().length === 0) return false;
+  const w = word.trim().toLowerCase();
+  if (AUTOMOD_CONFIG.bannedWords.includes(w)) return false;
+  AUTOMOD_CONFIG.bannedWords.push(w);
+  BANNED_REGEX.push({
+    word: w,
+    regex: new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'),
+  });
+  saveState();
+  return true;
+}
+
+function removeBannedWord(word) {
+  const w = word.trim().toLowerCase();
+  const idx = AUTOMOD_CONFIG.bannedWords.indexOf(w);
+  if (idx === -1) return false;
+  AUTOMOD_CONFIG.bannedWords.splice(idx, 1);
+  const ridx = BANNED_REGEX.findIndex(r => r.word === w);
+  if (ridx !== -1) BANNED_REGEX.splice(ridx, 1);
+  saveState();
+  return true;
+}
+
 // Mapa en memoria para tracking de spam: userId → [timestamps]
 const spamTracker = new Map();
 
@@ -381,6 +466,11 @@ async function checkSuspiciousWords(message) {
       );
     }
 
+    const alertContent = matches.length > 3
+      ? `Nivel ${level}: ${matches.slice(0, 3).join(', ')}…`
+      : `Nivel ${level}: ${matches.join(', ')}`;
+    pushAlert('suspiciousWords', message.author.tag, alertContent);
+
   try {
     await logsSusMes.send({
       content: pingTeam ? `<@&${config.roles.team}>` : undefined,
@@ -438,6 +528,8 @@ async function checkBannedWords(message) {
     matchedWord:   matched.word,
     matchedText,
   });
+
+  pushAlert('bannedWords', message.author.tag, `Palabra prohibida: "${matched.word}"`);
   return true;
 }
 
@@ -523,6 +615,8 @@ async function checkSpam(message) {
     }
 
     await punish(message, 'está enviando el mismo mensaje repetidamente (spam)');
+
+    pushAlert('spam', message.author.tag, `Mensaje repetido ${recent.length}x en 60s`);
     return true;
   }
 
@@ -553,6 +647,8 @@ async function checkLinks(message) {
         matchedWord:   domain,
         matchedText:   match[0], // URL completa detectada
       });
+
+      pushAlert('links', message.author.tag, `Enlace bloqueado: ${domain}`);
       return true;
     }
   }
@@ -759,7 +855,10 @@ async function checkCrossChannelSpam(message) {
     }
   } else { console.error('No consiguió el canal de spam-messages-alert') }
 
+  pushAlert('crossChannelSpam', message.author.tag, `Cross-channel en ${uniqueChannels.size} canales`);
   return true;
 }
 
-module.exports = { checkMessage };
+loadState();
+
+module.exports = { checkMessage, alertHistory, getBannedWords, addBannedWord, removeBannedWord, saveState };

@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
+const { alertHistory, getBannedWords, addBannedWord, removeBannedWord, saveState } = require('../modules/automod');
 
 function createAPI(client) {
   const app = express();
@@ -56,17 +57,36 @@ function createAPI(client) {
     const cfg = require('../../config');
     if (cfg.features.automod[key] === undefined) return res.status(400).json({ error: 'Key invalida' });
     cfg.features.automod[key] = value;
+    saveState();
     res.json({ ok: true, [key]: value });
   });
 
   // GET /api/automod/wordlist
   app.get('/api/automod/wordlist', (req, res) => {
-    res.json([]);
+    res.json(getBannedWords());
   });
 
   // POST /api/automod/wordlist
   app.post('/api/automod/wordlist', (req, res) => {
-    res.json({ ok: true });
+    const { word, action } = req.body;
+    if (!word || !action) return res.status(400).json({ error: 'word y action requeridos' });
+
+    if (action === 'add') {
+      const added = addBannedWord(word);
+      return res.json({ ok: added, word });
+    }
+
+    if (action === 'remove') {
+      const removed = removeBannedWord(word);
+      return res.json({ ok: removed, word });
+    }
+
+    res.status(400).json({ error: 'action debe ser "add" o "remove"' });
+  });
+
+  // GET /api/automod/alerts
+  app.get('/api/automod/alerts', (req, res) => {
+    res.json(alertHistory.slice(0, 50));
   });
 
   // GET /api/members/search?q=
