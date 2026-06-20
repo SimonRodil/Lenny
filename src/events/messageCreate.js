@@ -12,6 +12,10 @@ module.exports = {
       await message.guild.members.fetch(message.author.id).catch(() => {});
     }
 
+    // Cuenta mensajes por canal para estadísticas
+    const channelId = message.channel.id;
+    client.messageCounts.set(channelId, (client.messageCounts.get(channelId) ?? 0) + 1);
+
     // AutoMod — si elimina el mensaje, no procesa más
     const blocked = await checkMessage(message);
     if (blocked) return;

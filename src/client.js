@@ -19,6 +19,9 @@ class LennyClient extends Client {
 
     // Contador de usos de comandos para las estadísticas
     this.commandCounts = new Map();
+
+    // Contador de mensajes por canal para las estadísticas
+    this.messageCounts = new Map();
   }
 }
 
