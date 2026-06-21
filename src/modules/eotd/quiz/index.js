@@ -87,15 +87,6 @@ async function generateQuizData() {
 
 const MENSAJES = {
   spanish: {
-    titulo: (word) => `🌍 **Exercise of the Day — Quiz: "${word}"**`,
-    instruccion: 'What does this word mean? Try to guess the correct definition!',
-    instruccionIt: '*¿Qué significa esta palabra? ¡Intenta adivinar la definición correcta!*',
-    ejemplo: (word, example) => example
-      ? `📖 **Example:**\n"${example}"`
-      : '',
-    footer: '🔍 El resultado se revelará al votar',
-  },
-  english: {
     titulo: (word) => `🌍 **Ejercicio del Día — Quiz: "${word}"**`,
     instruccion: '¿Qué significa esta palabra? ¡Intenta adivinar la definición correcta!',
     instruccionIt: '*What does this word mean? Try to guess the correct definition!*',
@@ -103,6 +94,17 @@ const MENSAJES = {
       ? `📖 **Ejemplo:**\n"${example}"`
       : '',
     footer: '🔍 El resultado se revelará al votar',
+    pollQuestion: (word) => `❓ ¿Qué significa "${word}"?`,
+  },
+  english: {
+    titulo: (word) => `🌍 **Exercise of the Day — Quiz: "${word}"**`,
+    instruccion: 'What does this word mean? Try to guess the correct definition!',
+    instruccionIt: '*¿Qué significa esta palabra? ¡Intenta adivinar la definición correcta!*',
+    ejemplo: (word, example) => example
+      ? `📖 **Example:**\n"${example}"`
+      : '',
+    footer: '🔍 The result will be revealed when you vote',
+    pollQuestion: (word) => `❓ What does "${word}" mean?`,
   },
 };
 
@@ -142,7 +144,7 @@ async function sendQuiz(interaction, client, canalesValidos, roles, datos) {
       content: contenido,
       embeds: [embed],
       poll: {
-        question: { text: `❓ ¿Qué significa "${word}"?` },
+        question: { text: msg.pollQuestion(word) },
         answers,
         duration: 24,
         layoutType: 2,
@@ -212,7 +214,7 @@ async function sendQuizFromAPI(client, canalesValidos, roles, datos) {
       content: contenido,
       embeds: [embed],
       poll: {
-        question: { text: `❓ ¿Qué significa "${word}"?` },
+        question: { text: msg.pollQuestion(word) },
         answers,
         duration: 24,
         layoutType: 2,

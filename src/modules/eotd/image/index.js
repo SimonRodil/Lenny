@@ -10,20 +10,20 @@ const CATEGORIAS = [
 
 const MENSAJES = {
   spanish: {
-    titulo: '🌍 **Exercise of the Day — Describe this image!**',
-    desc: 'What can you see in this picture? Try to describe everything you can — colors, objects, people, actions, weather... The more details, the better!',
-    descIt: '*¿Qué ves en esta imagen? Intenta describir todo lo que puedas — colores, objetos, personas, acciones, clima... ¡Mientras más detalles, mejor!*',
-    ejemplo: '📝 **Example:**\n"There is a green tree on a hill next to a waterfall"\n*"Hay un árbol verde en una colina junto a una cascada"*',
-    footer: '📷 Image by',
-    enlace: 'on Unsplash',
-  },
-  english: {
     titulo: '🌍 **Ejercicio del Día — ¡Describe esta imagen!**',
     desc: '¿Qué ves en esta imagen? Intenta describir todo lo que puedas — colores, objetos, personas, acciones, clima... ¡Mientras más detalles, mejor!',
     descIt: '*What can you see in this picture? Try to describe everything you can — colors, objects, people, actions, weather... The more details, the better!*',
     ejemplo: '📝 **Ejemplo:**\n"Hay un árbol verde en una colina junto a una cascada"\n*"There is a green tree on a hill next to a waterfall"*',
     footer: '📷 Foto por',
     enlace: 'en Unsplash',
+  },
+  english: {
+    titulo: '🌍 **Exercise of the Day — Describe this image!**',
+    desc: 'What can you see in this picture? Try to describe everything you can — colors, objects, people, actions, weather... The more details, the better!',
+    descIt: '*¿Qué ves en esta imagen? Intenta describir todo lo que puedas — colores, objetos, personas, acciones, clima... ¡Mientras más detalles, mejor!*',
+    ejemplo: '📝 **Example:**\n"There is a green tree on a hill next to a waterfall"\n*"Hay un árbol verde en una colina junto a una cascada"*',
+    footer: '📷 Image by',
+    enlace: 'on Unsplash',
   },
 };
 
