@@ -2,9 +2,9 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const config = require('../../../config');
-const wotdConfig = require('../../config/wotd');
+const eotdConfig = require('../../config/eotd');
 
-const HISTORY_PATH = path.join(__dirname, '../../../data/wotd-history.json');
+const HISTORY_PATH = path.join(__dirname, '../../../data/eotd-history.json');
 
 const CATEGORIAS = [
   'nature', 'travel', 'architecture', 'landscape', 'city',
@@ -16,7 +16,7 @@ const CATEGORIAS = [
 
 const MENSAJES = {
   spanish: {
-    titulo: '🌍 **Word of the Day — Describe this image!**',
+    titulo: '🌍 **Exercise of the Day — Describe this image!**',
     desc: 'What can you see in this picture? Try to describe everything you can — colors, objects, people, actions, weather... The more details, the better!',
     descIt: '*¿Qué ves en esta imagen? Intenta describir todo lo que puedas — colores, objetos, personas, acciones, clima... ¡Mientras más detalles, mejor!*',
     ejemplo: '📝 **Example:**\n"There is a green tree on a hill next to a waterfall"\n*"Hay un árbol verde en una colina junto a una cascada"*',
@@ -24,7 +24,7 @@ const MENSAJES = {
     enlace: 'on Unsplash',
   },
   english: {
-    titulo: '🌍 **Palabra del Día — ¡Describe esta imagen!**',
+    titulo: '🌍 **Ejercicio del Día — ¡Describe esta imagen!**',
     desc: '¿Qué ves en esta imagen? Intenta describir todo lo que puedas — colores, objetos, personas, acciones, clima... ¡Mientras más detalles, mejor!',
     descIt: '*What can you see in this picture? Try to describe everything you can — colors, objects, people, actions, weather... The more details, the better!*',
     ejemplo: '📝 **Ejemplo:**\n"Hay un árbol verde en una colina junto a una cascada"\n*"There is a green tree on a hill next to a waterfall"*',
@@ -114,8 +114,8 @@ function traducirCategoria(cat) {
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('wotd')
-    .setDescription('Envía una imagen aleatoria de Unsplash a los canales de práctica'),
+    .setName('eotd')
+    .setDescription('Envía una imagen aleatoria de Unsplash a los canales de práctica (Exercise of the Day)'),
 
   async execute(interaction, client) {
     await interaction.deferReply({ flags: 64 });
@@ -130,13 +130,13 @@ module.exports = {
     }
 
     try {
-      const canales = wotdConfig.canales;
-      const roles = wotdConfig.roles;
+      const canales = eotdConfig.canales;
+      const roles = eotdConfig.roles;
       const canalesValidos = Object.entries(canales).filter(([, id]) => idEsValido(id));
 
       if (canalesValidos.length === 0) {
         return await interaction.editReply(
-          '❌ No hay canales configurados en `src/config/wotd.js`.\n'
+          '❌ No hay canales configurados en `src/config/eotd.js`.\n'
           + 'Asegúrate de haber puesto IDs válidos (18-20 dígitos) en `canales.spanish` y `canales.english`.'
         );
       }
@@ -187,7 +187,7 @@ module.exports = {
       }
 
       if (enviados === 0) {
-        return await interaction.editReply('⚠️ No se pudo enviar a ningún canal. Revisa que los IDs en `src/config/wotd.js` sean correctos y que el bot tenga acceso a esos canales.');
+        return await interaction.editReply('⚠️ No se pudo enviar a ningún canal. Revisa que los IDs en `src/config/eotd.js` sean correctos y que el bot tenga acceso a esos canales.');
       }
 
       agregarHistorial({

@@ -1,5 +1,5 @@
-// src/config/wotd.js — Configuración del comando /wotd (Word of the Day)
-// Copia este archivo como wotd.js y rellena los IDs.
+// src/config/eotd.js — Configuración del comando /eotd (Exercise of the Day)
+// Copia este archivo como eotd.js y rellena los IDs.
 module.exports = {
   // IDs de los canales donde se enviará la imagen del día
   canales: {

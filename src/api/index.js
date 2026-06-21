@@ -228,10 +228,10 @@ function createAPI(client) {
     res.json({ ok: true, results });
   });
 
-  // GET /api/wotd/history
-  app.get('/api/wotd/history', (req, res) => {
+  // GET /api/eotd/history
+  app.get('/api/eotd/history', (req, res) => {
     try {
-      const data = fs.readFileSync(path.join(__dirname, '../../data/wotd-history.json'), 'utf8');
+      const data = fs.readFileSync(path.join(__dirname, '../../data/eotd-history.json'), 'utf8');
       const history = JSON.parse(data);
       return res.json(Array.isArray(history) ? history : []);
     } catch {
@@ -239,15 +239,15 @@ function createAPI(client) {
     }
   });
 
-  // POST /api/wotd/force
-  app.post('/api/wotd/force', async (req, res) => {
-    const command = client.commands.get('wotd');
-    if (!command) return res.status(400).json({ error: 'Comando wotd no encontrado' });
+  // POST /api/eotd/force
+  app.post('/api/eotd/force', async (req, res) => {
+    const command = client.commands.get('eotd');
+    if (!command) return res.status(400).json({ error: 'Comando eotd no encontrado' });
     try {
       const guild = client.guilds.cache.first();
       if (!guild) return res.status(400).json({ error: 'No hay guild' });
       await command.execute({ client, guild, interaction: null });
-      res.json({ ok: true, message: 'WOTD enviado' });
+      res.json({ ok: true, message: 'EOTD enviado' });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }

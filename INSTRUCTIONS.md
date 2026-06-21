@@ -63,7 +63,7 @@ En Discord, ejecuta `/ping` en tu servidor. Debería responder con la latencia.
 
 ---
 
-## 8. Comando /wotd — Imagen del día
+## 8. Comando /eotd — Imagen del día (Exercise of the Day)
 
 Envía una imagen aleatoria de Unsplash a 2 canales (uno para estudiantes de español,
 otro para estudiantes de inglés) para que practiquen describiendo imágenes.
@@ -71,7 +71,7 @@ otro para estudiantes de inglés) para que practiquen describiendo imágenes.
 ### 8.1 Conseguir API key de Unsplash
 
 1. Ve a [unsplash.com/developers](https://unsplash.com/developers) y crea una cuenta
-2. Crea una **New Application** (puedes ponerle "Lenny WOTD")
+2. Crea una **New Application** (puedes ponerle "Lenny EOTD")
 3. Copia el **Access Key** y ponlo en `.env`:
 
 ```
@@ -80,10 +80,10 @@ UNSPLASH_ACCESS_KEY=tu_access_key_aqui
 
 ### 8.2 Configurar canales y roles
 
-Crea `src/config/wotd.js` a partir de la plantilla:
+Crea `src/config/eotd.js` a partir de la plantilla:
 
 ```bash
-cp src/config/wotd-blank.js src/config/wotd.js
+cp src/config/eotd-blank.js src/config/eotd.js
 ```
 
 Edítalo con los IDs de tu servidor:
@@ -103,9 +103,9 @@ module.exports = {
 
 Los IDs se obtienen con Modo Desarrollador activado → Click derecho en canal/rol → Copiar ID.
 
-### 8.3 Usar /wotd
+### 8.3 Usar /eotd
 
-Una vez configurado, ejecuta `/wotd` en cualquier canal donde el bot pueda verlo.
+Una vez configurado, ejecuta `/eotd` en cualquier canal donde el bot pueda verlo.
 El bot enviará la imagen a los 2 canales configurados con el mensaje adecuado
 para cada idioma y mencionando los roles correspondientes.
 
