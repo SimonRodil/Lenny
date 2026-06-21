@@ -204,25 +204,62 @@ function createAPI(client) {
     res.json({ ok: true, results });
   });
 
-  // GET /api/eotd/history
+  // ── EOTD (Exercise of the Day) ──────────────────────────
+  // GET /api/eotd/history — historial de ambos modos
   app.get('/api/eotd/history', (req, res) => {
-    let history = [];
-    try { history = require('../../data/eotd-last.json'); } catch {}
-    res.json(Array.isArray(history) ? history : []);
+    try {
+      const data = fs.readFileSync(path.join(__dirname, '../../data/eotd-history.json'), 'utf8');
+      const history = JSON.parse(data);
+      return res.json(Array.isArray(history) ? history : []);
+    } catch { return res.json([]); }
   });
 
-  // POST /api/eotd/force
-  app.post('/api/eotd/force', async (req, res) => {
-    const command = client.commands.get('eotd');
-    if (!command) return res.status(400).json({ error: 'Comando eotd no encontrado' });
+  // POST /api/eotd/image/send — forzar envío de imagen
+  app.post('/api/eotd/image/send', async (req, res) => {
+    const imageModule = require('./modules/eotd/image');
+    const eotdCfg = require('../../config/eotd');
+    const canales = Object.entries(eotdCfg.canales).filter(([, id]) => id && /^\d{17,20}$/.test(id.trim()));
+    const guild = client.guilds.cache.first();
+    if (!guild || canales.length === 0) return res.status(400).json({ error: 'Sin canales' });
     try {
-      const guild = client.guilds.cache.first();
-      if (!guild) return res.status(400).json({ error: 'No hay guild' });
-      await command.execute({ client, guild, interaction: null });
-      res.json({ ok: true, message: 'EOTD enviado' });
-    } catch (e) {
-      res.status(500).json({ error: e.message });
-    }
+      const result = await imageModule.sendImageFromAPI(client, canales, eotdCfg.roles, { fecha: null, categoriasUsadas: [] });
+      // Guardar en historial (misma lógica que el comando)
+      let history = [];
+      try { const d = fs.readFileSync(path.join(__dirname, '../../data/eotd-history.json'), 'utf8'); history = JSON.parse(d); } catch {}
+      if (!Array.isArray(history)) history = [];
+      history.unshift(result.historyEntry);
+      if (history.length > 30) history.length = 30;
+      fs.writeFileSync(path.join(__dirname, '../../data/eotd-history.json'), JSON.stringify(history, null, 2));
+      res.json({ ok: true, message: `Imagen enviada a ${result.enviados} canal(es)`, mode: 'image' });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // POST /api/eotd/quiz/send — forzar envío de quiz
+  app.post('/api/eotd/quiz/send', async (req, res) => {
+    const quizModule = require('./modules/eotd/quiz');
+    const eotdCfg = require('../../config/eotd');
+    const canales = Object.entries(eotdCfg.canales).filter(([, id]) => id && /^\d{17,20}$/.test(id.trim()));
+    const guild = client.guilds.cache.first();
+    if (!guild || canales.length === 0) return res.status(400).json({ error: 'Sin canales' });
+    try {
+      const result = await quizModule.sendQuizFromAPI(client, canales, eotdCfg.roles, { fecha: null, categoriasUsadas: [] });
+      let history = [];
+      try { const d = fs.readFileSync(path.join(__dirname, '../../data/eotd-history.json'), 'utf8'); history = JSON.parse(d); } catch {}
+      if (!Array.isArray(history)) history = [];
+      history.unshift(result.historyEntry);
+      if (history.length > 30) history.length = 30;
+      fs.writeFileSync(path.join(__dirname, '../../data/eotd-history.json'), JSON.stringify(history, null, 2));
+      res.json({ ok: true, message: `Quiz enviado a ${result.enviados} canal(es)`, mode: 'quiz' });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // GET /api/eotd/quiz/generate — previsualizar quiz sin enviar
+  app.get('/api/eotd/quiz/generate', async (req, res) => {
+    try {
+      const quizModule = require('./modules/eotd/quiz');
+      const data = await quizModule.generateQuizData();
+      res.json({ ok: true, ...data });
+    } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
   return app;
@@ -284,6 +321,25 @@ Para probar que funciona, abre otra terminal y corre:
   curl http://localhost:3456/api/status -H "Authorization: Bearer dash-secret-token"
 
 Si ves JSON con datos del bot, ¡esta funcionando!
+
+------------------
+REFERENCIA: EOTD (Exercise of the Day)
+------------------
+El comando /eotd ahora acepta mode: "image" | "quiz"
+Los endpoints de API para EOTD son:
+
+  GET  /api/eotd/history       → historial (ambos modos)
+  POST /api/eotd/image/send    → forzar envío de imagen
+  POST /api/eotd/quiz/send     → forzar envío de quiz
+  GET  /api/eotd/quiz/generate → preview del quiz (no envía)
+
+El historial incluye el campo "mode" para identificar el tipo:
+  mode: "image" → category, photographer, url
+  mode: "quiz"  → word, phonetic, definition, correctIndex
+
+Solo se puede enviar 1 EOTD por día (sin importar el modo).
+Los quizzes usan Discord Polls con layoutType: Quiz (2) y
+duración de 24 horas. El resultado se revela al votar.
 
 ------------------
 NOTAS IMPORTANTES

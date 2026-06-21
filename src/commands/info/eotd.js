@@ -1,40 +1,15 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const config = require('../../../config');
 const eotdConfig = require('../../config/eotd');
+const imageModule = require('../../modules/eotd/image');
+const quizModule = require('../../modules/eotd/quiz');
 
 const HISTORY_PATH = path.join(__dirname, '../../../data/eotd-history.json');
 
-const CATEGORIAS = [
-  'nature', 'travel', 'architecture', 'landscape', 'city',
-  'food', 'animals', 'water', 'forest', 'mountain',
-  'beach', 'street', 'market', 'garden', 'sunset',
-  'interior', 'village', 'river', 'lake', 'flower',
-  'wildlife', 'farm', 'night', 'rain', 'snow',
-];
-
-const MENSAJES = {
-  spanish: {
-    titulo: '🌍 **Exercise of the Day — Describe this image!**',
-    desc: 'What can you see in this picture? Try to describe everything you can — colors, objects, people, actions, weather... The more details, the better!',
-    descIt: '*¿Qué ves en esta imagen? Intenta describir todo lo que puedas — colores, objetos, personas, acciones, clima... ¡Mientras más detalles, mejor!*',
-    ejemplo: '📝 **Example:**\n"There is a green tree on a hill next to a waterfall"\n*"Hay un árbol verde en una colina junto a una cascada"*',
-    footer: '📷 Image by',
-    enlace: 'on Unsplash',
-  },
-  english: {
-    titulo: '🌍 **Ejercicio del Día — ¡Describe esta imagen!**',
-    desc: '¿Qué ves en esta imagen? Intenta describir todo lo que puedas — colores, objetos, personas, acciones, clima... ¡Mientras más detalles, mejor!',
-    descIt: '*What can you see in this picture? Try to describe everything you can — colors, objects, people, actions, weather... The more details, the better!*',
-    ejemplo: '📝 **Ejemplo:**\n"Hay un árbol verde en una colina junto a una cascada"\n*"There is a green tree on a hill next to a waterfall"*',
-    footer: '📷 Foto por',
-    enlace: 'en Unsplash',
-  },
-};
-
 function idEsValido(id) {
-  return id && typeof id === 'string' && id.trim().length > 0 && /^\d{17,20}$/.test(id.trim());
+  return id && typeof id === 'string' && /^\d{17,20}$/.test(id.trim());
 }
 
 function esStaff(member) {
@@ -50,24 +25,15 @@ function hoy() {
   return new Date().toISOString().slice(0, 10);
 }
 
-const CATEGORIA_AL_REVES = {
-  naturaleza: 'nature', viajes: 'travel', arquitectura: 'architecture',
-  paisaje: 'landscape', ciudad: 'city', comida: 'food',
-  animales: 'animals', agua: 'water', bosque: 'forest',
-  montaña: 'mountain', playa: 'beach', calle: 'street',
-  mercado: 'market', jardín: 'garden', atardecer: 'sunset',
-  interior: 'interior', pueblo: 'village', río: 'river',
-  lago: 'lake', flores: 'flower', 'vida salvaje': 'wildlife',
-  granja: 'farm', noche: 'night', lluvia: 'rain', nieve: 'snow',
-};
-
 function obtenerDatos() {
   try {
     if (fs.existsSync(HISTORY_PATH)) {
       const history = JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf8'));
       if (Array.isArray(history) && history.length > 0) {
         const ultimo = history[0];
-        const categorias = history.map(e => e.categoryKey || CATEGORIA_AL_REVES[e.category] || e.category.toLowerCase());
+        const categorias = history
+          .filter(e => e.mode === 'image')
+          .map(e => e.categoryKey || '');
         return { fecha: ultimo.date, categoriasUsadas: categorias };
       }
     }
@@ -88,36 +54,22 @@ function agregarHistorial(entry) {
   } catch {}
 }
 
-function seleccionarCategoria(categoriasUsadas) {
-  const disponibles = CATEGORIAS.filter(c => !categoriasUsadas.includes(c));
-
-  if (disponibles.length === 0) {
-    return CATEGORIAS[Math.floor(Math.random() * CATEGORIAS.length)];
-  }
-
-  return disponibles[Math.floor(Math.random() * disponibles.length)];
-}
-
-function traducirCategoria(cat) {
-  const mapa = {
-    nature: 'naturaleza', travel: 'viajes', architecture: 'arquitectura',
-    landscape: 'paisaje', city: 'ciudad', food: 'comida',
-    animals: 'animales', water: 'agua', forest: 'bosque',
-    mountain: 'montaña', beach: 'playa', street: 'calle',
-    market: 'mercado', garden: 'jardín', sunset: 'atardecer',
-    interior: 'interior', village: 'pueblo', river: 'río',
-    lake: 'lago', flower: 'flores', wildlife: 'vida salvaje',
-    farm: 'granja', night: 'noche', rain: 'lluvia', snow: 'nieve',
-  };
-  return mapa[cat] || cat;
-}
-
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('eotd')
-    .setDescription('Envía una imagen aleatoria de Unsplash a los canales de práctica (Exercise of the Day)'),
+    .setDescription('Exercise of the Day — envía un ejercicio a los canales de práctica')
+    .addStringOption(option =>
+      option.setName('mode')
+        .setDescription('Tipo de ejercicio')
+        .setRequired(true)
+        .addChoices(
+          { name: '📷 Imagen — describe una foto', value: 'image' },
+          { name: '🧠 Quiz — adivina el significado', value: 'quiz' },
+        )
+    ),
 
   async execute(interaction, client) {
+    const mode = interaction.options.getString('mode');
     await interaction.deferReply({ flags: 64 });
 
     if (!esStaff(interaction.member)) {
@@ -126,82 +78,34 @@ module.exports = {
 
     const datos = obtenerDatos();
     if (datos.fecha === hoy()) {
-      return await interaction.editReply('⏳ Ya se envió la imagen del día hoy. Vuelve mañana.');
+      return await interaction.editReply('⏳ Ya se envió el EOTD hoy. Vuelve mañana.');
+    }
+
+    const canales = eotdConfig.canales;
+    const roles = eotdConfig.roles;
+    const canalesValidos = Object.entries(canales).filter(([, id]) => idEsValido(id));
+
+    if (canalesValidos.length === 0) {
+      return await interaction.editReply(
+        '❌ No hay canales configurados en `src/config/eotd.js`.\n'
+        + 'Asegúrate de haber puesto IDs válidos (18-20 dígitos) en `canales.spanish` y `canales.english`.'
+      );
     }
 
     try {
-      const canales = eotdConfig.canales;
-      const roles = eotdConfig.roles;
-      const canalesValidos = Object.entries(canales).filter(([, id]) => idEsValido(id));
+      let result;
 
-      if (canalesValidos.length === 0) {
-        return await interaction.editReply(
-          '❌ No hay canales configurados en `src/config/eotd.js`.\n'
-          + 'Asegúrate de haber puesto IDs válidos (18-20 dígitos) en `canales.spanish` y `canales.english`.'
-        );
+      if (mode === 'image') {
+        result = await imageModule.sendImage(interaction, client, canalesValidos, roles, datos);
+      } else {
+        result = await quizModule.sendQuiz(interaction, client, canalesValidos, roles, datos);
       }
 
-      const categoria = seleccionarCategoria(datos.categoriasUsadas || []);
-      const catEsp = traducirCategoria(categoria);
-
-      const url = `https://api.unsplash.com/photos/random?orientation=landscape&content_filter=high&query=${categoria}`;
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}` },
-      });
-
-      if (!res.ok) {
-        return await interaction.editReply('❌ Error al obtener imagen de Unsplash. Revisa que la API key en `.env` sea correcta.');
-      }
-
-      const data = await res.json();
-      const tituloCat = `${catEsp.charAt(0).toUpperCase() + catEsp.slice(1)}`;
-
-      let enviados = 0;
-      const envios = [];
-
-      for (const [idioma, canalId] of canalesValidos) {
-        const canal = client.channels.cache.get(canalId.trim());
-        if (!canal) continue;
-
-        const msg = MENSAJES[idioma];
-        const rolId = roles[idioma];
-        const contenido = idEsValido(rolId) ? `<@&${rolId.trim()}>` : undefined;
-
-        const embed = new EmbedBuilder()
-          .setColor(0x5865F2)
-          .setTitle(`${msg.titulo} — ${tituloCat}`)
-          .setDescription(`${msg.desc}\n\n${msg.descIt}\n\n${msg.ejemplo}`)
-          .setImage(data.urls.regular)
-          .setFooter({ text: `${msg.footer} ${data.user.name} ${msg.enlace}`, iconURL: data.user.profile_image?.small })
-          .setTimestamp();
-
-        const sent = await canal.send({ content: contenido, embeds: [embed] });
-        envios.push({
-          channelId: canal.id,
-          channelName: idioma,
-          messageId: sent.id,
-          photoUrl: data.urls.regular,
-          timestamp: new Date().toISOString(),
-        });
-        enviados++;
-      }
-
-      if (enviados === 0) {
-        return await interaction.editReply('⚠️ No se pudo enviar a ningún canal. Revisa que los IDs en `src/config/eotd.js` sean correctos y que el bot tenga acceso a esos canales.');
-      }
-
-      agregarHistorial({
-        date: hoy(),
-        category: tituloCat,
-        categoryKey: categoria,
-        photographer: data.user.name,
-        url: data.urls.regular,
-        envios,
-      });
-      await interaction.editReply(`✅ Imagen enviada (${tituloCat}) a ${enviados} canal(es).`);
+      agregarHistorial(result.historyEntry);
+      await interaction.editReply(result.mensaje);
     } catch (err) {
-      console.error('[WOTD] Error:', err.message);
-      await interaction.editReply('❌ Error al conectar con Unsplash. Intenta de nuevo.');
+      console.error(`[EOTD:${mode}] Error:`, err.message);
+      await interaction.editReply(`❌ Error al enviar el ejercicio: \`${err.message}\``);
     }
   },
 };

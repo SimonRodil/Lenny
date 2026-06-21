@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
 const { alertHistory, getBannedWords, addBannedWord, removeBannedWord, saveState } = require('../modules/automod');
+const imageModule = require('../modules/eotd/image');
+const quizModule = require('../modules/eotd/quiz');
 
 function createAPI(client) {
   const app = express();
@@ -228,26 +230,75 @@ function createAPI(client) {
     res.json({ ok: true, results });
   });
 
-  // GET /api/eotd/history
-  app.get('/api/eotd/history', (req, res) => {
+  function getEotdConfig() {
+    const eotdCfg = require('../../config/eotd');
+    const canales = Object.entries(eotdCfg.canales).filter(([, id]) => id && /^\d{17,20}$/.test(id.trim()));
+    return { canales, roles: eotdCfg.roles };
+  }
+
+  function getHistory() {
     try {
       const data = fs.readFileSync(path.join(__dirname, '../../data/eotd-history.json'), 'utf8');
       const history = JSON.parse(data);
-      return res.json(Array.isArray(history) ? history : []);
-    } catch {
-      return res.json([]);
+      return Array.isArray(history) ? history : [];
+    } catch { return []; }
+  }
+
+  function saveHistoryEntry(entry) {
+    try {
+      const dir = path.join(__dirname, '../../data');
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      let history = getHistory();
+      history.unshift(entry);
+      if (history.length > 30) history.length = 30;
+      fs.writeFileSync(path.join(__dirname, '../../data/eotd-history.json'), JSON.stringify(history, null, 2));
+    } catch {}
+  }
+
+  // GET /api/eotd/history
+  app.get('/api/eotd/history', (req, res) => {
+    res.json(getHistory());
+  });
+
+  // POST /api/eotd/image/send
+  app.post('/api/eotd/image/send', async (req, res) => {
+    const guild = client.guilds.cache.first();
+    if (!guild) return res.status(400).json({ error: 'No hay guild' });
+    try {
+      const { canales, roles } = getEotdConfig();
+      if (canales.length === 0) return res.status(400).json({ error: 'No hay canales configurados' });
+
+      const datos = { fecha: null, categoriasUsadas: [] };
+      const result = await imageModule.sendImageFromAPI(client, canales, roles, datos);
+      saveHistoryEntry(result.historyEntry);
+      res.json({ ok: true, message: `Imagen enviada a ${result.enviados} canal(es)`, mode: 'image', ...result });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
     }
   });
 
-  // POST /api/eotd/force
-  app.post('/api/eotd/force', async (req, res) => {
-    const command = client.commands.get('eotd');
-    if (!command) return res.status(400).json({ error: 'Comando eotd no encontrado' });
+  // POST /api/eotd/quiz/send
+  app.post('/api/eotd/quiz/send', async (req, res) => {
+    const guild = client.guilds.cache.first();
+    if (!guild) return res.status(400).json({ error: 'No hay guild' });
     try {
-      const guild = client.guilds.cache.first();
-      if (!guild) return res.status(400).json({ error: 'No hay guild' });
-      await command.execute({ client, guild, interaction: null });
-      res.json({ ok: true, message: 'EOTD enviado' });
+      const { canales, roles } = getEotdConfig();
+      if (canales.length === 0) return res.status(400).json({ error: 'No hay canales configurados' });
+
+      const datos = { fecha: null, categoriasUsadas: [] };
+      const result = await quizModule.sendQuizFromAPI(client, canales, roles, datos);
+      saveHistoryEntry(result.historyEntry);
+      res.json({ ok: true, message: `Quiz enviado a ${result.enviados} canal(es)`, mode: 'quiz', ...result });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // GET /api/eotd/quiz/generate — preview sin enviar
+  app.get('/api/eotd/quiz/generate', async (req, res) => {
+    try {
+      const data = await quizModule.generateQuizData();
+      res.json({ ok: true, ...data });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
