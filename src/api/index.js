@@ -9,7 +9,30 @@ function createAPI(client) {
   app.use(cors());
   app.use(express.json());
 
+  const config = require('../../config');
   const API_TOKEN = process.env.API_TOKEN || 'dash-secret-token';
+
+  async function sendModLog(guild, action, targetId, reason, duration) {
+    const channel = guild.channels.cache.get(config.channels.logsModeration);
+    if (!channel) return;
+    let description = `<@${targetId}> fue **${action}**`;
+    if (reason) description += `\nRazón: \`${reason}\``;
+    if (duration) description += `\nDuración: ${duration} min`;
+    description += `\n\nAcción ejecutada desde el **Dashboard**.`;
+    await channel.send({
+      embeds: [{
+        color: action === 'baneado' ? config.colors.error
+             : action === 'expulsado' ? config.colors.warning
+             : config.colors.primary,
+        title: action === 'baneado' ? '🔨 Usuario baneado'
+             : action === 'expulsado' ? '👢 Usuario expulsado'
+             : '⏱️ Timeout aplicado',
+        description,
+        timestamp: new Date().toISOString(),
+        footer: { text: `ID: ${targetId}` },
+      }],
+    }).catch(err => console.error('[API] Error al enviar log de moderación:', err.message));
+  }
 
   function auth(req, res, next) {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -130,6 +153,7 @@ function createAPI(client) {
     if (!guild) return res.status(400).json({ error: 'No hay guild' });
     try {
       await guild.members.ban(userId, { reason: reason || 'Dashboard' });
+      await sendModLog(guild, 'baneado', userId, reason);
       res.json({ ok: true, message: 'Usuario baneado' });
     } catch (e) {
       res.status(500).json({ error: e.message });
@@ -144,6 +168,7 @@ function createAPI(client) {
     try {
       const m = await guild.members.fetch(userId);
       await m.kick(reason || 'Dashboard');
+      await sendModLog(guild, 'expulsado', userId, reason);
       res.json({ ok: true, message: 'Usuario expulsado' });
     } catch (e) {
       res.status(500).json({ error: e.message });
@@ -158,6 +183,7 @@ function createAPI(client) {
     try {
       const m = await guild.members.fetch(userId);
       await m.timeout((duration || 60) * 60 * 1000, reason || 'Dashboard');
+      await sendModLog(guild, 'silenciado', userId, reason, duration || 60);
       res.json({ ok: true, message: 'Timeout aplicado por ' + (duration || 60) + ' min' });
     } catch (e) {
       res.status(500).json({ error: e.message });

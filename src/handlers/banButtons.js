@@ -41,6 +41,20 @@ module.exports = (client) => {
             timestamp: new Date().toISOString(),
           }],
         });
+
+        // 3. Envía notificación al canal de logs de moderación
+        const modChannel = guild.channels.cache.get(config.channels.logsModeration);
+        if (modChannel) {
+          await modChannel.send({
+            embeds: [{
+              color: config.colors.error,
+              title: '🔨 Usuario baneado',
+              description: `<@${userId}> fue baneado por **${member.user.tag}**.\nRazón: \`[AutoMod] Spam\``,
+              timestamp: new Date().toISOString(),
+              footer: { text: `ID: ${userId}` },
+            }],
+          }).catch(() => {});
+        }
       } catch (err) {
         await interaction.reply({
           content: `${config.emojis.error} Error al banear: \`${err.message}\``,
@@ -68,6 +82,20 @@ module.exports = (client) => {
             timestamp: new Date().toISOString(),
           }],
         });
+
+        // 3. Envía notificación al canal de logs de moderación
+        const modChannel = guild.channels.cache.get(config.channels.logsModeration);
+        if (modChannel) {
+          await modChannel.send({
+            embeds: [{
+              color: config.colors.success,
+              title: '🕊️ Timeout eliminado',
+              description: `<@${userId}> fue perdonado por **${member.user.tag}**.\nTimeout eliminado manualmente.`,
+              timestamp: new Date().toISOString(),
+              footer: { text: `ID: ${userId}` },
+            }],
+          }).catch(() => {});
+        }
       } catch (err) {
         await interaction.reply({
           content: `${config.emojis.error} Error al redimir: \`${err.message}\``,
