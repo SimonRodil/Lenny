@@ -1,8 +1,11 @@
 const { EmbedBuilder } = require('discord.js');
 const fallbackWords = require('./fallback');
+const fallbackSpanishWords = require('./fallback-es');
 
 const RANDOM_WORD_API = 'https://random-word-api.herokuapp.com/word?number=5';
 const DICTIONARY_API = 'https://api.dictionaryapi.dev/api/v2/entries/en';
+const RANDOM_WORD_API_ES = 'https://palabras-aleatorias.vercel.app/api/random';
+const DICTIONARY_API_ES = 'https://api.dictionaryapi.dev/api/v2/entries/es';
 
 function shuffle(arr) {
   const a = [...arr];
@@ -22,7 +25,19 @@ function getFallbackQuiz() {
     ...distractors.map(d => ({ text: d.definition, correct: false })),
   ]);
   const correctIndex = answers.findIndex(a => a.correct);
-  return { word: correct.word, phonetic: correct.phonetic, answers, correctIndex };
+  return { word: correct.word, phonetic: correct.phonetic, definition: correct.definition, example: null, answers, correctIndex };
+}
+
+function getFallbackQuizSpanish() {
+  const shuffled = shuffle(fallbackSpanishWords);
+  const correct = shuffled[0];
+  const distractors = shuffled.slice(1, 4);
+  const answers = shuffle([
+    { text: correct.definition, correct: true },
+    ...distractors.map(d => ({ text: d.definition, correct: false })),
+  ]);
+  const correctIndex = answers.findIndex(a => a.correct);
+  return { word: correct.word, phonetic: correct.phonetic, definition: correct.definition, example: null, answers, correctIndex };
 }
 
 async function fetchWordsFromAPI() {
@@ -45,6 +60,75 @@ async function fetchDefinition(word) {
     phonetic: entry.phonetic || entry.phonetics?.find(p => p.text)?.text || '',
     example: meaning.example || null,
   };
+}
+
+async function fetchSpanishWordsFromAPI() {
+  const words = [];
+  for (let i = 0; i < 5; i++) {
+    try {
+      const res = await fetch(RANDOM_WORD_API_ES);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.word) words.push(data.word);
+      }
+    } catch { }
+  }
+  if (words.length < 5) throw new Error('Not enough Spanish words');
+  return words;
+}
+
+async function fetchSpanishDefinition(word) {
+  const res = await fetch(`${DICTIONARY_API_ES}/${encodeURIComponent(word)}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  const entry = data[0];
+  if (!entry) return null;
+  const meaning = entry.meanings?.[0]?.definitions?.[0];
+  if (!meaning) return null;
+  return {
+    word: entry.word,
+    definition: meaning.definition,
+    phonetic: entry.phonetic || entry.phonetics?.find(p => p.text)?.text || '',
+    example: meaning.example || null,
+  };
+}
+
+async function generateQuizDataSpanish() {
+  try {
+    const words = await fetchSpanishWordsFromAPI();
+    if (!Array.isArray(words) || words.length < 5) throw new Error('Not enough Spanish words');
+
+    const entries = (await Promise.all(words.map(w => fetchSpanishDefinition(w).catch(() => null))))
+      .filter(Boolean);
+
+    if (entries.length < 4) throw new Error('Not enough Spanish definitions');
+
+    const shuffled = shuffle(entries);
+    const correct = shuffled[0];
+    const distractors = shuffled.slice(1, 4);
+
+    const answers = shuffle([
+      { text: correct.definition.replace(/[;:].*$/, '').trim(), correct: true },
+      ...distractors.map(d => ({
+        text: d.definition.replace(/[;:].*$/, '').trim(),
+        correct: false,
+      })),
+    ]);
+
+    const correctIndex = answers.findIndex(a => a.correct);
+
+    return {
+      word: correct.word,
+      phonetic: correct.phonetic,
+      definition: correct.definition,
+      example: correct.example,
+      answers: answers.map(a => ({ text: a.text })),
+      correctIndex,
+    };
+  } catch (err) {
+    console.error('[EOTD Quiz] Spanish API error, using fallback:', err.message);
+    return getFallbackQuizSpanish();
+  }
 }
 
 async function generateQuizData() {
@@ -109,19 +193,15 @@ const MENSAJES = {
 };
 
 async function sendQuiz(interaction, client, canalesValidos, roles, datos) {
-  const quizData = await generateQuizData();
-  const word = quizData.word;
-  const phonetic = quizData.phonetic;
-  const definition = quizData.definition;
-  const example = quizData.example;
-  const answers = quizData.answers;
-
   let enviados = 0;
   const envios = [];
 
   for (const [idioma, canalId] of canalesValidos) {
     const canal = client.channels.cache.get(canalId.trim());
     if (!canal) continue;
+
+    const quizData = idioma === 'spanish' ? await generateQuizDataSpanish() : await generateQuizData();
+    const { word, phonetic, definition, example, answers, correctIndex } = quizData;
 
     const msg = MENSAJES[idioma];
     const rolId = roles[idioma];
@@ -147,7 +227,7 @@ async function sendQuiz(interaction, client, canalesValidos, roles, datos) {
         question: { text: msg.pollQuestion(word) },
         answers,
         duration: 24,
-        layoutType: 2,
+        layoutType: 1,
       },
     });
 
@@ -156,7 +236,9 @@ async function sendQuiz(interaction, client, canalesValidos, roles, datos) {
       channelName: idioma,
       messageId: sent.id,
       word,
+      phonetic,
       definition,
+      correctIndex,
       timestamp: new Date().toISOString(),
     });
     enviados++;
@@ -169,29 +251,21 @@ async function sendQuiz(interaction, client, canalesValidos, roles, datos) {
   const historyEntry = {
     date: new Date().toISOString().slice(0, 10),
     mode: 'quiz',
-    word,
-    phonetic,
-    definition,
-    correctIndex: quizData.correctIndex,
     envios,
   };
 
-  return { historyEntry, enviados, mensaje: `✅ Quiz enviado ("${word}") a ${enviados} canal(es).` };
+  return { historyEntry, enviados, mensaje: `✅ Quiz enviado a ${enviados} canal(es).` };
 }
 
 async function sendQuizFromAPI(client, canalesValidos, roles, datos) {
-  const quizData = await generateQuizData();
-  const word = quizData.word;
-  const phonetic = quizData.phonetic;
-  const definition = quizData.definition;
-  const example = quizData.example;
-  const answers = quizData.answers;
-
   const envios = [];
 
   for (const [idioma, canalId] of canalesValidos) {
     const canal = client.channels.cache.get(canalId.trim());
     if (!canal) continue;
+
+    const quizData = idioma === 'spanish' ? await generateQuizDataSpanish() : await generateQuizData();
+    const { word, phonetic, definition, example, answers, correctIndex } = quizData;
 
     const msg = MENSAJES[idioma];
     const rolId = roles[idioma];
@@ -211,13 +285,12 @@ async function sendQuizFromAPI(client, canalesValidos, roles, datos) {
       .setTimestamp();
 
     const sent = await canal.send({
-      content: contenido,
       embeds: [embed],
       poll: {
         question: { text: msg.pollQuestion(word) },
         answers,
         duration: 24,
-        layoutType: 2,
+        layoutType: 1,
       },
     });
 
@@ -226,7 +299,9 @@ async function sendQuizFromAPI(client, canalesValidos, roles, datos) {
       channelName: idioma,
       messageId: sent.id,
       word,
+      phonetic,
       definition,
+      correctIndex,
       timestamp: new Date().toISOString(),
     });
   }
@@ -234,10 +309,6 @@ async function sendQuizFromAPI(client, canalesValidos, roles, datos) {
   const historyEntry = {
     date: new Date().toISOString().slice(0, 10),
     mode: 'quiz',
-    word,
-    phonetic,
-    definition,
-    correctIndex: quizData.correctIndex,
     envios,
   };
 

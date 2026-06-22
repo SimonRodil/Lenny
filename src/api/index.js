@@ -239,8 +239,13 @@ function createAPI(client) {
   function getHistory() {
     try {
       const data = fs.readFileSync(path.join(__dirname, '../../data/eotd-history.json'), 'utf8');
-      const history = JSON.parse(data);
-      return Array.isArray(history) ? history : [];
+      let history = JSON.parse(data);
+      if (!Array.isArray(history)) return [];
+      history = history.map(e => {
+        if (e.mode) return e;
+        return { mode: 'image', ...e };
+      });
+      return history;
     } catch { return []; }
   }
 
