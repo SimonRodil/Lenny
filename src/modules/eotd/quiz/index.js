@@ -16,13 +16,17 @@ function shuffle(arr) {
   return a;
 }
 
+function truncate(text, max = 55) {
+  return text.length > max ? text.slice(0, max - 1) + '…' : text;
+}
+
 function getFallbackQuiz() {
   const shuffled = shuffle(fallbackWords);
   const correct = shuffled[0];
   const distractors = shuffled.slice(1, 4);
   const answers = shuffle([
-    { text: correct.definition, correct: true },
-    ...distractors.map(d => ({ text: d.definition, correct: false })),
+    { text: truncate(correct.definition.replace(/[;:].*$/, '').trim()), correct: true },
+    ...distractors.map(d => ({ text: truncate(d.definition.replace(/[;:].*$/, '').trim()), correct: false })),
   ]);
   const correctIndex = answers.findIndex(a => a.correct);
   return { word: correct.word, phonetic: correct.phonetic, definition: correct.definition, example: null, answers, correctIndex };
@@ -33,8 +37,8 @@ function getFallbackQuizSpanish() {
   const correct = shuffled[0];
   const distractors = shuffled.slice(1, 4);
   const answers = shuffle([
-    { text: correct.definition, correct: true },
-    ...distractors.map(d => ({ text: d.definition, correct: false })),
+    { text: truncate(correct.definition.replace(/[;:].*$/, '').trim()), correct: true },
+    ...distractors.map(d => ({ text: truncate(d.definition.replace(/[;:].*$/, '').trim()), correct: false })),
   ]);
   const correctIndex = answers.findIndex(a => a.correct);
   return { word: correct.word, phonetic: correct.phonetic, definition: correct.definition, example: null, answers, correctIndex };
@@ -108,9 +112,9 @@ async function generateQuizDataSpanish() {
     const distractors = shuffled.slice(1, 4);
 
     const answers = shuffle([
-      { text: correct.definition.replace(/[;:].*$/, '').trim(), correct: true },
+      { text: truncate(correct.definition.replace(/[;:].*$/, '').trim()), correct: true },
       ...distractors.map(d => ({
-        text: d.definition.replace(/[;:].*$/, '').trim(),
+        text: truncate(d.definition.replace(/[;:].*$/, '').trim()),
         correct: false,
       })),
     ]);
@@ -146,9 +150,9 @@ async function generateQuizData() {
     const distractors = shuffled.slice(1, 4);
 
     const answers = shuffle([
-      { text: correct.definition.replace(/[;:].*$/, '').trim(), correct: true },
+      { text: truncate(correct.definition.replace(/[;:].*$/, '').trim()), correct: true },
       ...distractors.map(d => ({
-        text: d.definition.replace(/[;:].*$/, '').trim(),
+        text: truncate(d.definition.replace(/[;:].*$/, '').trim()),
         correct: false,
       })),
     ]);
