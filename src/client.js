@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Partials } = require('discord.js');
 
 class LennyClient extends Client {
   constructor() {
@@ -8,6 +8,10 @@ class LennyClient extends Client {
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.MessageContent,
+      ],
+      partials: [
+        Partials.Message,
+        Partials.Channel,
       ],
     });
 

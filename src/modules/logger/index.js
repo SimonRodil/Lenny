@@ -22,6 +22,8 @@ function logEmbed(color, title) {
 
 // ── Entrada de miembro ─────────────────────────────
 async function logMemberJoin(member) {
+  if (!config.features.logJoin) return;
+
   const channel = getLogChannel(member.guild);
   if (!channel) return;
 
@@ -33,13 +35,13 @@ async function logMemberJoin(member) {
       { name: 'Cuenta creada', value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true }
     );
 
-  
-  if (!config.features.logJoin) return; // ← si está desactivado, no hace nada
   await channel.send({ embeds: [embed] });
 }
 
 // ── Salida de miembro ──────────────────────────────
 async function logMemberLeave(member) {
+  if (!config.features.logLeaves) return;
+
   const channel = getLogChannel(member.guild);
   if (!channel) return;
 
@@ -51,8 +53,6 @@ async function logMemberLeave(member) {
       { name: 'Estuvo', value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:R>`, inline: true }
     );
 
-
-  if (!config.features.logLeaves) return; // ← si está desactivado, no hace nada
   await channel.send({ embeds: [embed] });
 }
 

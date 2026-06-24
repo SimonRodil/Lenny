@@ -312,6 +312,14 @@ async function getImageHash(url) {
   try {
     const response = await fetch(url);
     if (!response.ok) return null;
+
+    const contentType = response.headers.get('content-type') || '';
+    const supportedFormats = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/tiff', 'image/avif'];
+    if (!supportedFormats.some(fmt => contentType.startsWith(fmt))) {
+      console.warn(`[AutoMod] Formato de imagen no soportado: ${url} (Content-Type: ${contentType})`);
+      return null;
+    }
+
     const buffer = Buffer.from(await response.arrayBuffer());
     const pixels = await sharp(buffer)
       .resize(8, 8, { fit: 'cover' })
