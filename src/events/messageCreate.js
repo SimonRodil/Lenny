@@ -1,5 +1,6 @@
 // src/events/messageCreate.js
 const { checkMessage } = require('../modules/automod');
+const { handleAutocompleteReply } = require('../modules/eotd/autocomplete/replyHandler');
 
 module.exports = {
   name: 'messageCreate',
@@ -19,6 +20,9 @@ module.exports = {
     // AutoMod — si elimina el mensaje, no procesa más
     const blocked = await checkMessage(message);
     if (blocked) return;
+
+    // Autocomplete — respuestas en tiempo real a ejercicios de填空
+    await handleAutocompleteReply(message, client);
 
     // Aquí irán otros módulos que reaccionen a mensajes,
     // como el sistema de niveles (XP por mensajes)

@@ -26,6 +26,9 @@ class LennyClient extends Client {
 
     // Contador de mensajes por canal para las estadísticas
     this.messageCounts = new Map();
+
+    // Cache para ejercicios de autocomplete — messageId → { correctAnswer, fullSentence, language, channelId }
+    this.autocompleteCache = new Map();
   }
 }
 

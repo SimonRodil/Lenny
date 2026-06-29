@@ -5,6 +5,7 @@ const cors = require('cors');
 const { alertHistory, getBannedWords, addBannedWord, removeBannedWord, saveState } = require('../modules/automod');
 const imageModule = require('../modules/eotd/image');
 const quizModule = require('../modules/eotd/quiz');
+const autocompleteModule = require('../modules/eotd/autocomplete');
 
 function createAPI(client) {
   const app = express();
@@ -294,6 +295,23 @@ function createAPI(client) {
       const result = await quizModule.sendQuizFromAPI(client, canales, roles, datos);
       saveHistoryEntry(result.historyEntry);
       res.json({ ok: true, message: `Quiz enviado a ${result.enviados} canal(es)`, mode: 'quiz', ...result });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /api/eotd/autocomplete/send
+  app.post('/api/eotd/autocomplete/send', async (req, res) => {
+    const guild = client.guilds.cache.first();
+    if (!guild) return res.status(400).json({ error: 'No hay guild' });
+    try {
+      const { canales, roles } = getEotdConfig();
+      if (canales.length === 0) return res.status(400).json({ error: 'No hay canales configurados' });
+
+      const datos = { fecha: null, categoriasUsadas: [] };
+      const result = await autocompleteModule.sendAutocompleteFromAPI(client, canales, roles, datos);
+      saveHistoryEntry(result.historyEntry);
+      res.json({ ok: true, message: `Autocomplete enviado a ${result.enviados} canal(es)`, mode: 'autocomplete', ...result });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
